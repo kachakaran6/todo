@@ -53,7 +53,26 @@ dev_dependencies:
   # Linting
   flutter_lints: ^6.0.0
   custom_lint: ^0.7.5
-  riverpod_lint: ^2.6.1
+  # Launcher icons
+  flutter_launcher_icons: ^0.14.3
+
+flutter_launcher_icons:
+  android: "launcher_icon"
+  ios: true
+  image_path: "icon.png"
+  min_sdk_android: 21
+  web:
+    generate: true
+    image_path: "icon.png"
+    background_color: "#121212"
+    theme_color: "#3B82F6"
+  windows:
+    generate: true
+    image_path: "icon.png"
+    icon_size: 48
+  macos:
+    generate: true
+    image_path: "icon.png"
 
 flutter:
   uses-material-design: true

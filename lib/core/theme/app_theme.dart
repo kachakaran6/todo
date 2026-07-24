@@ -132,8 +132,8 @@ class OrbitTheme {
       // ──────────────────────────────────────────────────────────────────────
       // List Tiles
       // ──────────────────────────────────────────────────────────────────────
-      listTileTheme: ListTileThemeData(
-        contentPadding: const EdgeInsets.symmetric(
+      listTileTheme: const ListTileThemeData(
+        contentPadding: EdgeInsets.symmetric(
           horizontal: AppConstants.space4,
           vertical: AppConstants.space1,
         ),
