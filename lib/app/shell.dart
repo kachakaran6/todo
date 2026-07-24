@@ -15,7 +15,7 @@ class AppShell extends ConsumerWidget {
   @override
   Widget build(BuildContext context, WidgetRef ref) {
     final prefs = ref.watch(preferencesNotifierProvider);
-    final homeIndex = prefs.defaultLandingPage.clamp(0, 5);
+    final homeIndex = prefs.defaultLandingPage.clamp(0, 4);
     final isAtHome = navigationShell.currentIndex == homeIndex;
     final width = MediaQuery.of(context).size.width;
     final isWide = width >= AppConstants.breakpointMedium;
@@ -38,7 +38,7 @@ class AppShell extends ConsumerWidget {
 }
 
 // ──────────────────────────────────────────────────────────────────────────
-// Phone layout — bottom navigation bar with 6 core productivity branches
+// Phone layout — bottom navigation bar with 5 core productivity branches
 // ──────────────────────────────────────────────────────────────────────────
 
 class _NarrowLayout extends ConsumerWidget {
@@ -63,7 +63,7 @@ class _NarrowLayout extends ConsumerWidget {
           const NavigationDestination(
             icon: Icon(Icons.inbox_outlined),
             selectedIcon: Icon(Icons.inbox_rounded),
-            label: 'Inbox',
+            label: 'Capture',
           ),
           NavigationDestination(
             icon: todayCountAsync.when(
@@ -78,11 +78,6 @@ class _NarrowLayout extends ConsumerWidget {
             ),
             selectedIcon: const Icon(Icons.wb_sunny_rounded),
             label: 'Today',
-          ),
-          const NavigationDestination(
-            icon: Icon(Icons.calendar_month_outlined),
-            selectedIcon: Icon(Icons.calendar_month_rounded),
-            label: 'Upcoming',
           ),
           const NavigationDestination(
             icon: Icon(Icons.grid_view_outlined),
@@ -155,17 +150,12 @@ class _WideLayout extends ConsumerWidget {
               NavigationRailDestination(
                 icon: Icon(Icons.inbox_outlined),
                 selectedIcon: Icon(Icons.inbox_rounded),
-                label: Text('Inbox'),
+                label: Text('Capture'),
               ),
               NavigationRailDestination(
                 icon: Icon(Icons.wb_sunny_outlined),
                 selectedIcon: Icon(Icons.wb_sunny_rounded),
                 label: Text('Today'),
-              ),
-              NavigationRailDestination(
-                icon: Icon(Icons.calendar_month_outlined),
-                selectedIcon: Icon(Icons.calendar_month_rounded),
-                label: Text('Upcoming'),
               ),
               NavigationRailDestination(
                 icon: Icon(Icons.grid_view_outlined),

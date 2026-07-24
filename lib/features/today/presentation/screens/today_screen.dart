@@ -216,42 +216,89 @@ class _CompletionHeader extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final colorScheme = Theme.of(context).colorScheme;
+    final theme = Theme.of(context);
+    final colorScheme = theme.colorScheme;
     final progress = total > 0 ? completed / total : 0.0;
+    final percentInt = (progress * 100).round();
 
-    return Column(
-      crossAxisAlignment: CrossAxisAlignment.start,
-      children: [
-        Row(
-          children: [
-            Text(
-              '$completed of $total done',
-              style: Theme.of(context).textTheme.labelMedium?.copyWith(
-                    color: colorScheme.onSurfaceVariant,
-                  ),
-            ),
-            const Spacer(),
-            if (completed == total && total > 0)
-              Text(
-                '🎉 All done!',
-                style: Theme.of(context).textTheme.labelMedium?.copyWith(
-                      color: colorScheme.primary,
-                      fontWeight: FontWeight.w600,
-                    ),
-              ),
-          ],
+    return Container(
+      padding: const EdgeInsets.all(AppConstants.space4),
+      decoration: BoxDecoration(
+        color: colorScheme.surfaceContainerHighest.withValues(alpha: 0.4),
+        borderRadius: BorderRadius.circular(20),
+        border: Border.all(
+          color: colorScheme.outlineVariant.withValues(alpha: 0.35),
         ),
-        const SizedBox(height: AppConstants.space2),
-        ClipRRect(
-          borderRadius: BorderRadius.circular(AppConstants.radiusXS),
-          child: LinearProgressIndicator(
-            value: progress,
-            backgroundColor: colorScheme.surfaceContainerHigh,
-            valueColor: AlwaysStoppedAnimation<Color>(colorScheme.primary),
-            minHeight: 4,
+        boxShadow: [
+          BoxShadow(
+            color: Colors.black.withValues(
+                alpha: theme.brightness == Brightness.dark ? 0.2 : 0.03),
+            blurRadius: 14,
+            offset: const Offset(0, 4),
           ),
-        ),
-      ],
+        ],
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Row(
+            children: [
+              Container(
+                width: 42,
+                height: 42,
+                decoration: BoxDecoration(
+                  color: colorScheme.primaryContainer,
+                  shape: BoxShape.circle,
+                ),
+                child: Center(
+                  child: Text(
+                    '$percentInt%',
+                    style: theme.textTheme.labelMedium?.copyWith(
+                      fontWeight: FontWeight.bold,
+                      color: colorScheme.primary,
+                    ),
+                  ),
+                ),
+              ),
+              const SizedBox(width: AppConstants.space3),
+              Expanded(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text(
+                      completed == total && total > 0
+                          ? '🎉 Everything accomplished!'
+                          : '$completed of $total tasks completed today',
+                      style: theme.textTheme.titleSmall?.copyWith(
+                        fontWeight: FontWeight.bold,
+                      ),
+                    ),
+                    const SizedBox(height: 2),
+                    Text(
+                      completed == total && total > 0
+                          ? 'Take time to relax or plan for tomorrow'
+                          : '${total - completed} remaining focus items',
+                      style: theme.textTheme.bodySmall?.copyWith(
+                        color: colorScheme.onSurfaceVariant,
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+            ],
+          ),
+          const SizedBox(height: AppConstants.space3),
+          ClipRRect(
+            borderRadius: BorderRadius.circular(8),
+            child: LinearProgressIndicator(
+              value: progress,
+              backgroundColor: colorScheme.surfaceContainerHigh,
+              valueColor: AlwaysStoppedAnimation<Color>(colorScheme.primary),
+              minHeight: 6,
+            ),
+          ),
+        ],
+      ),
     );
   }
 }

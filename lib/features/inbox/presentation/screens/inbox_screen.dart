@@ -24,7 +24,7 @@ class InboxScreen extends ConsumerWidget {
 
     return Scaffold(
       appBar: AppBar(
-        title: const Text('Inbox'),
+        title: const Text('Quick Capture'),
         actions: [
           IconButton(
             icon: const Icon(Icons.search_rounded),
@@ -59,8 +59,11 @@ class _InboxContent extends ConsumerWidget {
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
+    final theme = Theme.of(context);
+    final colorScheme = theme.colorScheme;
+
     if (tasks.isEmpty) {
-      return InboxEmptyState(onAdd: () => showQuickAdd(context));
+      return const InboxEmptyState();
     }
 
     final actions = ref.read(taskActionsProvider.notifier);
@@ -70,9 +73,47 @@ class _InboxContent extends ConsumerWidget {
         top: AppConstants.space2,
         bottom: 100, // Above FAB
       ),
-      itemCount: tasks.length,
+      itemCount: tasks.length + 1,
       itemBuilder: (context, i) {
-        final task = tasks[i];
+        if (i == 0) {
+          // Hero Summary Banner
+          return Container(
+            margin: const EdgeInsets.fromLTRB(
+              AppConstants.space3,
+              AppConstants.space2,
+              AppConstants.space3,
+              AppConstants.space3,
+            ),
+            padding: const EdgeInsets.symmetric(
+              horizontal: AppConstants.space4,
+              vertical: AppConstants.space3,
+            ),
+            decoration: BoxDecoration(
+              color: colorScheme.primaryContainer.withValues(alpha: 0.35),
+              borderRadius: BorderRadius.circular(16),
+              border: Border.all(
+                color: colorScheme.primary.withValues(alpha: 0.2),
+              ),
+            ),
+            child: Row(
+              children: [
+                Icon(Icons.all_inbox_rounded, color: colorScheme.primary, size: 22),
+                const SizedBox(width: AppConstants.space3),
+                Expanded(
+                  child: Text(
+                    '${tasks.length} unorganized task${tasks.length == 1 ? "" : "s"} ready for triage',
+                    style: theme.textTheme.bodyMedium?.copyWith(
+                      fontWeight: FontWeight.w600,
+                      color: colorScheme.onSurface,
+                    ),
+                  ),
+                ),
+              ],
+            ),
+          );
+        }
+
+        final task = tasks[i - 1];
         return TaskTile(
           key: ValueKey(task.id),
           task: task,
@@ -91,7 +132,7 @@ class _InboxContent extends ConsumerWidget {
           onTap: () => context.push('/task/${task.id}'),
         )
             .animate()
-            .fadeIn(delay: Duration(milliseconds: i * 30), duration: 200.ms)
+            .fadeIn(delay: Duration(milliseconds: (i - 1) * 30), duration: 200.ms)
             .slideY(begin: 0.05, end: 0, duration: 200.ms);
       },
     );

@@ -8,19 +8,31 @@ import 'package:orbit_todo/core/widgets/empty_state.dart';
 import 'package:orbit_todo/features/projects/application/projects_provider.dart';
 import 'package:orbit_todo/features/projects/domain/project_entity.dart';
 import 'package:orbit_todo/features/tasks/application/tasks_provider.dart';
-import 'package:orbit_todo/features/tasks/presentation/widgets/task_quick_add.dart';
 
-/// Projects screen — grid of user-created project cards.
+/// Projects screen — grid of user-created project cards with MNC-level UI.
 class ProjectsScreen extends ConsumerWidget {
   const ProjectsScreen({super.key});
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
     final projectsAsync = ref.watch(projectsProvider);
+    final theme = Theme.of(context);
+    final colorScheme = theme.colorScheme;
 
     return Scaffold(
       appBar: AppBar(
-        title: const Text('Projects'),
+        title: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            const Text('Projects'),
+            Text(
+              'Workspaces & Folder Categories',
+              style: theme.textTheme.bodySmall?.copyWith(
+                color: colorScheme.onSurfaceVariant,
+              ),
+            ),
+          ],
+        ),
         actions: [
           IconButton(
             icon: const Icon(Icons.add_rounded),
@@ -56,6 +68,9 @@ class _ProjectsGrid extends ConsumerWidget {
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
+    final theme = Theme.of(context);
+    final colorScheme = theme.colorScheme;
+
     if (projects.isEmpty) {
       return ProjectsListEmptyState(
         onAdd: () => showDialog<void>(
@@ -67,21 +82,73 @@ class _ProjectsGrid extends ConsumerWidget {
 
     final crossCount = MediaQuery.of(context).size.width > AppConstants.breakpointMedium ? 3 : 2;
 
-    return GridView.builder(
-      padding: const EdgeInsets.all(AppConstants.space4),
-      gridDelegate: SliverGridDelegateWithFixedCrossAxisCount(
-        crossAxisCount: crossCount,
-        crossAxisSpacing: AppConstants.space3,
-        mainAxisSpacing: AppConstants.space3,
-        childAspectRatio: 1.5,
-      ),
-      itemCount: projects.length,
-      itemBuilder: (context, i) {
-        return _ProjectCard(project: projects[i])
-            .animate()
-            .fadeIn(delay: Duration(milliseconds: i * 40), duration: 200.ms)
-            .scale(begin: const Offset(0.95, 0.95), end: const Offset(1, 1), duration: 200.ms);
-      },
+    return CustomScrollView(
+      slivers: [
+        // Hero Header Banner
+        SliverToBoxAdapter(
+          child: Container(
+            margin: const EdgeInsets.fromLTRB(
+              AppConstants.space4,
+              AppConstants.space2,
+              AppConstants.space4,
+              AppConstants.space3,
+            ),
+            padding: const EdgeInsets.all(AppConstants.space3),
+            decoration: BoxDecoration(
+              color: colorScheme.surfaceContainerHighest.withValues(alpha: 0.35),
+              borderRadius: BorderRadius.circular(16),
+              border: Border.all(color: colorScheme.outlineVariant.withValues(alpha: 0.3)),
+            ),
+            child: Row(
+              children: [
+                CircleAvatar(
+                  backgroundColor: colorScheme.primaryContainer,
+                  radius: 20,
+                  child: Icon(Icons.folder_open_rounded, color: colorScheme.primary, size: 20),
+                ),
+                const SizedBox(width: AppConstants.space3),
+                Expanded(
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Text(
+                        '${projects.length} Workspace Project${projects.length == 1 ? "" : "s"}',
+                        style: theme.textTheme.titleSmall?.copyWith(fontWeight: FontWeight.bold),
+                      ),
+                      Text(
+                        'Organize tasks by client, domain, or category',
+                        style: theme.textTheme.bodySmall?.copyWith(color: colorScheme.onSurfaceVariant),
+                      ),
+                    ],
+                  ),
+                ),
+              ],
+            ),
+          ),
+        ),
+
+        // Projects Grid
+        SliverPadding(
+          padding: const EdgeInsets.symmetric(horizontal: AppConstants.space4),
+          sliver: SliverGrid(
+            gridDelegate: SliverGridDelegateWithFixedCrossAxisCount(
+              crossAxisCount: crossCount,
+              crossAxisSpacing: AppConstants.space3,
+              mainAxisSpacing: AppConstants.space3,
+              childAspectRatio: 1.15, // Fixed aspect ratio to guarantee zero overflow
+            ),
+            delegate: SliverChildBuilderDelegate(
+              (context, i) {
+                return _ProjectCard(project: projects[i])
+                    .animate()
+                    .fadeIn(delay: Duration(milliseconds: i * 40), duration: 200.ms)
+                    .scale(begin: const Offset(0.95, 0.95), end: const Offset(1, 1), duration: 200.ms);
+              },
+              childCount: projects.length,
+            ),
+          ),
+        ),
+      ],
     );
   }
 }
@@ -96,70 +163,96 @@ class _ProjectCard extends ConsumerWidget {
     final colorScheme = theme.colorScheme;
     final taskCountAsync = ref.watch(projectTaskCountProvider(project.id));
 
-    return Card(
+    return Container(
+      decoration: BoxDecoration(
+        color: colorScheme.surface,
+        borderRadius: BorderRadius.circular(18),
+        border: Border.all(
+          color: project.color.withValues(alpha: 0.35),
+          width: 1.2,
+        ),
+        boxShadow: [
+          BoxShadow(
+            color: project.color.withValues(alpha: 0.06),
+            blurRadius: 12,
+            offset: const Offset(0, 4),
+          ),
+        ],
+      ),
       clipBehavior: Clip.antiAlias,
       child: InkWell(
         onTap: () => context.push('/project/${project.id}'),
-        child: Padding(
-          padding: const EdgeInsets.all(AppConstants.space4),
-          child: Column(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              // Color dot + icon
-              Row(
+        borderRadius: BorderRadius.circular(18),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            // Top accent indicator bar
+            Container(
+              height: 4,
+              color: project.color,
+            ),
+            Padding(
+              padding: const EdgeInsets.all(12),
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                mainAxisSize: MainAxisSize.min,
                 children: [
-                  Container(
-                    width: 36,
-                    height: 36,
-                    decoration: BoxDecoration(
-                      shape: BoxShape.circle,
-                      color: project.color.withOpacity(0.15),
-                    ),
-                    child: Icon(
-                      _iconData(project.icon),
-                      size: 18,
-                      color: project.color,
-                    ),
+                  Row(
+                    children: [
+                      Container(
+                        width: 34,
+                        height: 34,
+                        decoration: BoxDecoration(
+                          shape: BoxShape.circle,
+                          color: project.color.withValues(alpha: 0.15),
+                        ),
+                        child: Icon(
+                          _iconData(project.icon),
+                          size: 18,
+                          color: project.color,
+                        ),
+                      ),
+                      const Spacer(),
+                      InkWell(
+                        onTap: () => _showProjectMenu(context, ref),
+                        borderRadius: BorderRadius.circular(20),
+                        child: Padding(
+                          padding: const EdgeInsets.all(4),
+                          child: Icon(
+                            Icons.more_horiz_rounded,
+                            size: 18,
+                            color: colorScheme.onSurfaceVariant,
+                          ),
+                        ),
+                      ),
+                    ],
                   ),
-                  const Spacer(),
-                  // Context menu
-                  InkWell(
-                    onTap: () => _showProjectMenu(context, ref),
-                    borderRadius: BorderRadius.circular(20),
-                    child: Padding(
-                      padding: const EdgeInsets.all(4),
-                      child: Icon(
-                        Icons.more_horiz_rounded,
-                        size: 16,
+                  const SizedBox(height: 10),
+                  Text(
+                    project.name,
+                    style: theme.textTheme.titleSmall?.copyWith(
+                      fontWeight: FontWeight.bold,
+                      color: colorScheme.onSurface,
+                    ),
+                    maxLines: 1,
+                    overflow: TextOverflow.ellipsis,
+                  ),
+                  const SizedBox(height: 2),
+                  taskCountAsync.when(
+                    data: (count) => Text(
+                      count == 0 ? 'No tasks' : '$count task${count == 1 ? '' : 's'}',
+                      style: theme.textTheme.bodySmall?.copyWith(
                         color: colorScheme.onSurfaceVariant,
+                        fontSize: 11,
                       ),
                     ),
+                    loading: () => const SizedBox(height: 12),
+                    error: (_, __) => const SizedBox.shrink(),
                   ),
                 ],
               ),
-              const Spacer(),
-              // Project name
-              Text(
-                project.name,
-                style: theme.textTheme.titleSmall?.copyWith(
-                  fontWeight: FontWeight.w600,
-                  color: colorScheme.onSurface,
-                ),
-                maxLines: 1,
-                overflow: TextOverflow.ellipsis,
-              ),
-              const SizedBox(height: 2),
-              // Task count
-              taskCountAsync.when(
-                data: (count) => Text(
-                  count == 0 ? 'No tasks' : '$count task${count == 1 ? '' : 's'}',
-                  style: theme.textTheme.bodySmall,
-                ),
-                loading: () => const SizedBox(height: 12),
-                error: (_, __) => const SizedBox.shrink(),
-              ),
-            ],
-          ),
+            ),
+          ],
         ),
       ),
     );
@@ -178,7 +271,10 @@ class _ProjectCard extends ConsumerWidget {
               title: const Text('Edit project'),
               onTap: () {
                 Navigator.pop(ctx);
-                // TODO: Edit project dialog
+                showDialog(
+                  context: context,
+                  builder: (_) => _CreateProjectDialog(projectToEdit: project),
+                );
               },
             ),
             ListTile(
@@ -211,24 +307,34 @@ class _ProjectCard extends ConsumerWidget {
 }
 
 // ──────────────────────────────────────────────────────────────────────────
-// Create Project Dialog
+// Create/Edit Project Dialog
 // ──────────────────────────────────────────────────────────────────────────
 
 class _CreateProjectDialog extends ConsumerStatefulWidget {
+  const _CreateProjectDialog({this.projectToEdit});
+  final ProjectEntity? projectToEdit;
+
   @override
   ConsumerState<_CreateProjectDialog> createState() =>
       _CreateProjectDialogState();
 }
 
 class _CreateProjectDialogState extends ConsumerState<_CreateProjectDialog> {
-  final _nameController = TextEditingController();
-  String _selectedColor = '#4F46E5';
+  late final TextEditingController _nameController;
+  late String _selectedColor;
   bool _isSaving = false;
 
   final List<String> _colors = [
     '#4F46E5', '#059669', '#DC4C3E', '#D97706',
     '#7C3AED', '#0891B2', '#DB2777', '#65A30D',
   ];
+
+  @override
+  void initState() {
+    super.initState();
+    _nameController = TextEditingController(text: widget.projectToEdit?.name ?? '');
+    _selectedColor = widget.projectToEdit?.colorHex ?? '#4F46E5';
+  }
 
   @override
   void dispose() {
@@ -240,9 +346,10 @@ class _CreateProjectDialogState extends ConsumerState<_CreateProjectDialog> {
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
     final colorScheme = theme.colorScheme;
+    final isEditing = widget.projectToEdit != null;
 
     return AlertDialog(
-      title: const Text('New project'),
+      title: Text(isEditing ? 'Edit project' : 'New project'),
       content: Column(
         mainAxisSize: MainAxisSize.min,
         crossAxisAlignment: CrossAxisAlignment.start,
@@ -257,7 +364,7 @@ class _CreateProjectDialogState extends ConsumerState<_CreateProjectDialog> {
             ),
           ),
           const SizedBox(height: AppConstants.space4),
-          Text('Color', style: theme.textTheme.labelMedium),
+          Text('Color Accent', style: theme.textTheme.labelMedium),
           const SizedBox(height: AppConstants.space2),
           Wrap(
             spacing: AppConstants.space2,
@@ -286,7 +393,7 @@ class _CreateProjectDialogState extends ConsumerState<_CreateProjectDialog> {
                           )
                         : null,
                     boxShadow: isSelected
-                        ? [BoxShadow(color: c.withOpacity(0.4), blurRadius: 8)]
+                        ? [BoxShadow(color: c.withValues(alpha: 0.4), blurRadius: 8)]
                         : null,
                   ),
                   child: isSelected
@@ -312,7 +419,7 @@ class _CreateProjectDialogState extends ConsumerState<_CreateProjectDialog> {
                   height: 16,
                   child: CircularProgressIndicator(strokeWidth: 2),
                 )
-              : const Text('Create'),
+              : Text(isEditing ? 'Save' : 'Create'),
         ),
       ],
     );
@@ -322,10 +429,18 @@ class _CreateProjectDialogState extends ConsumerState<_CreateProjectDialog> {
     final name = _nameController.text.trim();
     if (name.isEmpty) return;
     setState(() => _isSaving = true);
-    await ref.read(projectActionsProvider.notifier).createProject(
-          name: name,
-          colorHex: _selectedColor,
-        );
+    if (widget.projectToEdit != null) {
+      await ref.read(projectActionsProvider.notifier).updateProject(
+            id: widget.projectToEdit!.id,
+            name: name,
+            colorHex: _selectedColor,
+          );
+    } else {
+      await ref.read(projectActionsProvider.notifier).createProject(
+            name: name,
+            colorHex: _selectedColor,
+          );
+    }
     if (mounted) Navigator.pop(context);
   }
 }

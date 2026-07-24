@@ -73,19 +73,32 @@ class TaskTile extends StatelessWidget {
         child: Container(
           margin: const EdgeInsets.symmetric(
             horizontal: AppConstants.space3,
-            vertical: AppConstants.space1,
+            vertical: 5,
           ),
           decoration: BoxDecoration(
             color: task.isCompleted
-                ? colorScheme.surfaceContainerLowest.withValues(alpha: 0.5)
-                : colorScheme.surfaceContainerLow.withValues(alpha: 0.6),
-            borderRadius: BorderRadius.circular(AppConstants.radiusMD),
+                ? colorScheme.surfaceContainerLowest.withValues(alpha: 0.4)
+                : colorScheme.surface,
+            borderRadius: BorderRadius.circular(AppConstants.radiusLG),
             border: Border.all(
               color: task.isCompleted
                   ? Colors.transparent
-                  : colorScheme.outlineVariant.withValues(alpha: 0.3),
-              width: 1,
+                  : (task.priority == TaskPriority.urgent
+                      ? const Color(0xFFDC2626).withValues(alpha: 0.4)
+                      : task.priority == TaskPriority.high
+                          ? const Color(0xFFEA580C).withValues(alpha: 0.35)
+                          : colorScheme.outlineVariant.withValues(alpha: 0.35)),
+              width: task.priority == TaskPriority.urgent ? 1.5 : 1,
             ),
+            boxShadow: [
+              if (!task.isCompleted)
+                BoxShadow(
+                  color: Colors.black.withValues(
+                      alpha: theme.brightness == Brightness.dark ? 0.25 : 0.04),
+                  blurRadius: 12,
+                  offset: const Offset(0, 4),
+                ),
+            ],
           ),
           child: InkWell(
             onTap: onTap,

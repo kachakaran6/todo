@@ -91,12 +91,10 @@ class InboxEmptyState extends StatelessWidget {
   final VoidCallback? onAdd;
 
   @override
-  Widget build(BuildContext context) => EmptyStateWidget(
+  Widget build(BuildContext context) => const EmptyStateWidget(
         icon: Icons.inbox_outlined,
-        headline: 'Inbox is clear',
+        headline: 'Quick Capture is clear',
         body: 'Capture anything on your mind here. You can sort and file it later.',
-        ctaLabel: onAdd != null ? 'Add a task' : null,
-        onCta: onAdd,
       );
 }
 

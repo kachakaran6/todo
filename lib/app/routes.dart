@@ -3,7 +3,6 @@ import 'package:go_router/go_router.dart';
 
 import '../../features/inbox/presentation/screens/inbox_screen.dart';
 import '../../features/today/presentation/screens/today_screen.dart';
-import '../../features/upcoming/presentation/screens/upcoming_screen.dart';
 import '../../features/matrix/presentation/screens/matrix_screen.dart';
 import '../../features/pomodoro/presentation/screens/pomodoro_screen.dart';
 import '../../features/projects/presentation/screens/projects_screen.dart';
@@ -26,7 +25,7 @@ final router = GoRouter(
         return AppShell(navigationShell: navigationShell);
       },
       branches: [
-        // Branch 0: Inbox
+        // Branch 0: Capture (Inbox)
         StatefulShellBranch(
           routes: [
             GoRoute(
@@ -48,18 +47,7 @@ final router = GoRouter(
           ],
         ),
 
-        // Branch 2: Upcoming Calendar
-        StatefulShellBranch(
-          routes: [
-            GoRoute(
-              path: '/upcoming',
-              name: 'upcoming',
-              builder: (context, state) => const UpcomingScreen(),
-            ),
-          ],
-        ),
-
-        // Branch 3: Priority Matrix
+        // Branch 2: Priority Matrix
         StatefulShellBranch(
           routes: [
             GoRoute(
@@ -70,7 +58,7 @@ final router = GoRouter(
           ],
         ),
 
-        // Branch 4: Pomodoro Focus
+        // Branch 3: Pomodoro Focus
         StatefulShellBranch(
           routes: [
             GoRoute(
@@ -81,7 +69,7 @@ final router = GoRouter(
           ],
         ),
 
-        // Branch 5: Projects
+        // Branch 4: Projects
         StatefulShellBranch(
           routes: [
             GoRoute(
