@@ -64,11 +64,6 @@ class _AllTasksScreenState extends ConsumerState<AllTasksScreen> {
       title: const Text('All Tasks'),
       actions: [
         IconButton(
-          icon: const Icon(Icons.palette_outlined),
-          tooltip: 'Theme & Accent',
-          onPressed: () => showQuickThemeSheet(context),
-        ),
-        IconButton(
           icon: const Icon(Icons.search_rounded),
           tooltip: 'Search',
           onPressed: () => setState(() => _isSearching = true),

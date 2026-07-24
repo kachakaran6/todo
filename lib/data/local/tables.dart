@@ -124,3 +124,85 @@ class SmartLists extends Table {
   @override
   Set<Column> get primaryKey => {id};
 }
+
+/// Custom field definitions (PRD Section 4.4).
+class CustomFieldDefinitions extends Table {
+  TextColumn get id => text()();
+  TextColumn get projectId => text().nullable().references(Projects, #id)(); // null = global
+  TextColumn get name => text()();
+  TextColumn get type => text()(); // text, number, checkbox, single_select, date, url
+  TextColumn get optionsJson => text().nullable()(); // JSON list for single_select
+  TextColumn get defaultValue => text().nullable()();
+  BoolColumn get isVisibleInDetails => boolean().withDefault(const Constant(true))();
+  BoolColumn get isVisibleInRow => boolean().withDefault(const Constant(false))();
+  DateTimeColumn get createdAt => dateTime().withDefault(currentDateAndTime)();
+
+  @override
+  Set<Column> get primaryKey => {id};
+}
+
+/// Stored values for custom fields.
+class CustomFieldValues extends Table {
+  TextColumn get id => text()();
+  TextColumn get fieldId => text().references(CustomFieldDefinitions, #id)();
+  TextColumn get taskId => text().references(Tasks, #id)();
+  TextColumn get value => text()();
+
+  @override
+  Set<Column> get primaryKey => {id};
+}
+
+/// Saved task templates (PRD Section 4.5).
+class TaskTemplates extends Table {
+  TextColumn get id => text()();
+  TextColumn get title => text()();
+  TextColumn get notes => text().nullable()();
+  IntColumn get priority => integer().withDefault(const Constant(0))();
+  TextColumn get projectId => text().nullable().references(Projects, #id)();
+  TextColumn get subtasksJson => text().nullable()();
+  DateTimeColumn get createdAt => dateTime().withDefault(currentDateAndTime)();
+
+  @override
+  Set<Column> get primaryKey => {id};
+}
+
+/// Scheduled local task reminders & alarms (PRD Section 5.3).
+class Reminders extends Table {
+  TextColumn get id => text()();
+  TextColumn get taskId => text().references(Tasks, #id)();
+  DateTimeColumn get scheduledTime => dateTime()();
+  IntColumn get offsetMinutes => integer().withDefault(const Constant(0))(); // 0 = at due time
+  BoolColumn get isTriggered => boolean().withDefault(const Constant(false))();
+  DateTimeColumn get createdAt => dateTime().withDefault(currentDateAndTime)();
+
+  @override
+  Set<Column> get primaryKey => {id};
+}
+
+/// Habits table definition for Habit Tracker feature.
+class Habits extends Table {
+  TextColumn get id => text()();
+  TextColumn get title => text()();
+  TextColumn get icon => text().withDefault(const Constant('star'))();
+  TextColumn get colorHex => text().withDefault(const Constant('#3B82F6'))();
+  IntColumn get targetCount => integer().withDefault(const Constant(1))();
+  TextColumn get unit => text().nullable()(); // "Cups", "Pages", "Mins", etc.
+  IntColumn get sortOrder => integer().withDefault(const Constant(0))();
+  DateTimeColumn get createdAt => dateTime().withDefault(currentDateAndTime)();
+
+  @override
+  Set<Column> get primaryKey => {id};
+}
+
+/// Daily logs for habits.
+class HabitLogs extends Table {
+  TextColumn get id => text()();
+  TextColumn get habitId => text().references(Habits, #id)();
+  DateTimeColumn get date => dateTime()(); // Truncated to day
+  IntColumn get count => integer().withDefault(const Constant(0))();
+  BoolColumn get isCompleted => boolean().withDefault(const Constant(false))();
+
+  @override
+  Set<Column> get primaryKey => {id};
+}
+

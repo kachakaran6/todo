@@ -22,6 +22,12 @@ part 'database.g.dart';
     TaskLinks,
     UserPreferences,
     SmartLists,
+    CustomFieldDefinitions,
+    CustomFieldValues,
+    TaskTemplates,
+    Reminders,
+    Habits,
+    HabitLogs,
   ],
   daos: [
     TasksDao,
@@ -34,7 +40,7 @@ class AppDatabase extends _$AppDatabase {
       : super(executor ?? _openConnection());
 
   @override
-  int get schemaVersion => 1;
+  int get schemaVersion => 3;
 
   @override
   MigrationStrategy get migration => MigrationStrategy(
@@ -44,7 +50,16 @@ class AppDatabase extends _$AppDatabase {
           await _seedDefaultSmartLists();
         },
         onUpgrade: (Migrator m, int from, int to) async {
-          // Future migrations go here
+          if (from < 2) {
+            await m.createTable(customFieldDefinitions);
+            await m.createTable(customFieldValues);
+            await m.createTable(taskTemplates);
+            await m.createTable(reminders);
+          }
+          if (from < 3) {
+            await m.createTable(habits);
+            await m.createTable(habitLogs);
+          }
         },
         beforeOpen: (details) async {
           // Enable foreign key support

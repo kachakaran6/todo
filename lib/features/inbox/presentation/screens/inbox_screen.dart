@@ -5,7 +5,6 @@ import 'package:go_router/go_router.dart';
 
 import 'package:orbit_todo/core/constants/app_constants.dart';
 import 'package:orbit_todo/core/widgets/empty_state.dart';
-import 'package:orbit_todo/core/widgets/quick_theme_sheet.dart';
 import 'package:orbit_todo/features/tasks/application/tasks_provider.dart';
 import 'package:orbit_todo/features/tasks/domain/task_entity.dart';
 import 'package:orbit_todo/features/tasks/presentation/widgets/task_tile.dart';
@@ -27,11 +26,6 @@ class InboxScreen extends ConsumerWidget {
       appBar: AppBar(
         title: const Text('Inbox'),
         actions: [
-          IconButton(
-            icon: const Icon(Icons.palette_outlined),
-            tooltip: 'Theme & Accent',
-            onPressed: () => showQuickThemeSheet(context),
-          ),
           IconButton(
             icon: const Icon(Icons.search_rounded),
             tooltip: 'Search',

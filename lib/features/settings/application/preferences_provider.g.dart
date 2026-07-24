@@ -27,7 +27,7 @@ final preferencesRepositoryProvider = Provider<PreferencesRepository>.internal(
 // ignore: unused_element
 typedef PreferencesRepositoryRef = ProviderRef<PreferencesRepository>;
 String _$preferencesNotifierHash() =>
-    r'd5c2f058e5287b534f4d63aa40123f7e38d16c44';
+    r'01c0ed7571e8a6aa364aa8e0bc62dd0dff374720';
 
 /// The primary user preferences notifier.
 /// Loaded synchronously from SharedPreferences (already initialized).

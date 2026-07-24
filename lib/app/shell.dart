@@ -6,9 +6,7 @@ import '../../core/constants/app_constants.dart';
 import '../../features/settings/application/preferences_provider.dart';
 import '../../features/tasks/application/tasks_provider.dart';
 
-/// App shell widget hosting the bottom navigation bar and the
-/// indexed navigation stack. Handles PRD Section 7 Back Navigation contract:
-/// Returns to configured home destination before allowing Android system exit.
+/// App shell widget hosting the bottom navigation bar and navigation rail.
 class AppShell extends ConsumerWidget {
   const AppShell({super.key, required this.navigationShell});
 
@@ -17,7 +15,7 @@ class AppShell extends ConsumerWidget {
   @override
   Widget build(BuildContext context, WidgetRef ref) {
     final prefs = ref.watch(preferencesNotifierProvider);
-    final homeIndex = prefs.defaultLandingPage.clamp(0, 3);
+    final homeIndex = prefs.defaultLandingPage.clamp(0, 5);
     final isAtHome = navigationShell.currentIndex == homeIndex;
     final width = MediaQuery.of(context).size.width;
     final isWide = width >= AppConstants.breakpointMedium;
@@ -40,7 +38,7 @@ class AppShell extends ConsumerWidget {
 }
 
 // ──────────────────────────────────────────────────────────────────────────
-// Phone layout — bottom navigation bar
+// Phone layout — bottom navigation bar with 6 core productivity branches
 // ──────────────────────────────────────────────────────────────────────────
 
 class _NarrowLayout extends ConsumerWidget {
@@ -82,14 +80,24 @@ class _NarrowLayout extends ConsumerWidget {
             label: 'Today',
           ),
           const NavigationDestination(
+            icon: Icon(Icons.calendar_month_outlined),
+            selectedIcon: Icon(Icons.calendar_month_rounded),
+            label: 'Upcoming',
+          ),
+          const NavigationDestination(
+            icon: Icon(Icons.grid_view_outlined),
+            selectedIcon: Icon(Icons.grid_view_rounded),
+            label: 'Matrix',
+          ),
+          const NavigationDestination(
+            icon: Icon(Icons.timer_outlined),
+            selectedIcon: Icon(Icons.timer_rounded),
+            label: 'Pomodoro',
+          ),
+          const NavigationDestination(
             icon: Icon(Icons.folder_open_outlined),
             selectedIcon: Icon(Icons.folder_rounded),
             label: 'Projects',
-          ),
-          const NavigationDestination(
-            icon: Icon(Icons.list_alt_outlined),
-            selectedIcon: Icon(Icons.list_alt_rounded),
-            label: 'All Tasks',
           ),
         ],
       ),
@@ -155,14 +163,24 @@ class _WideLayout extends ConsumerWidget {
                 label: Text('Today'),
               ),
               NavigationRailDestination(
+                icon: Icon(Icons.calendar_month_outlined),
+                selectedIcon: Icon(Icons.calendar_month_rounded),
+                label: Text('Upcoming'),
+              ),
+              NavigationRailDestination(
+                icon: Icon(Icons.grid_view_outlined),
+                selectedIcon: Icon(Icons.grid_view_rounded),
+                label: Text('Matrix'),
+              ),
+              NavigationRailDestination(
+                icon: Icon(Icons.timer_outlined),
+                selectedIcon: Icon(Icons.timer_rounded),
+                label: Text('Pomodoro'),
+              ),
+              NavigationRailDestination(
                 icon: Icon(Icons.folder_open_outlined),
                 selectedIcon: Icon(Icons.folder_rounded),
                 label: Text('Projects'),
-              ),
-              NavigationRailDestination(
-                icon: Icon(Icons.list_alt_outlined),
-                selectedIcon: Icon(Icons.list_alt_rounded),
-                label: Text('All Tasks'),
               ),
             ],
           ),

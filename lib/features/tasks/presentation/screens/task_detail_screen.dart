@@ -4,19 +4,14 @@ import 'package:go_router/go_router.dart';
 import 'package:intl/intl.dart';
 
 import 'package:orbit_todo/core/constants/app_constants.dart';
-import 'package:orbit_todo/core/theme/color_tokens.dart';
 import 'package:orbit_todo/core/widgets/orbit_checkbox.dart';
-import 'package:orbit_todo/core/widgets/priority_badge.dart';
 import 'package:orbit_todo/features/tasks/application/tasks_provider.dart';
 import 'package:orbit_todo/features/tasks/domain/task_entity.dart';
 import 'package:orbit_todo/features/tasks/domain/task_priority.dart';
 import 'package:orbit_todo/features/projects/application/projects_provider.dart';
-import 'package:orbit_todo/features/projects/domain/project_entity.dart';
 
 /// Task detail and edit screen.
-///
-/// Opens as a modal bottom sheet on phones, and as a side panel on tablets.
-/// All task fields are editable inline.
+/// Professional design with scrollable instant pickers and high contrast surfaces.
 class TaskDetailScreen extends ConsumerStatefulWidget {
   const TaskDetailScreen({super.key, required this.taskId});
   final String taskId;
@@ -28,8 +23,9 @@ class TaskDetailScreen extends ConsumerStatefulWidget {
 class _TaskDetailScreenState extends ConsumerState<TaskDetailScreen> {
   late final TextEditingController _titleController;
   late final TextEditingController _notesController;
-  bool _isEditing = false;
-  bool _isSaving = false;
+  late final TextEditingController _subtaskController;
+  bool _isEditingTitle = false;
+  bool _isEditingNotes = false;
 
   TaskEntity? _task;
 
@@ -38,50 +34,62 @@ class _TaskDetailScreenState extends ConsumerState<TaskDetailScreen> {
     super.initState();
     _titleController = TextEditingController();
     _notesController = TextEditingController();
+    _subtaskController = TextEditingController();
   }
 
   @override
   void dispose() {
     _titleController.dispose();
     _notesController.dispose();
+    _subtaskController.dispose();
     super.dispose();
   }
 
   void _loadTask(TaskEntity task) {
-    if (_task == null) {
+    if (_task == null || _task!.id != task.id) {
       _titleController.text = task.title;
       _notesController.text = task.notes ?? '';
+    } else {
+      if (!_isEditingTitle) _titleController.text = task.title;
+      if (!_isEditingNotes) _notesController.text = task.notes ?? '';
     }
     _task = task;
   }
 
-  Future<void> _saveChanges() async {
+  Future<void> _saveTitle() async {
     if (_task == null) return;
-    setState(() => _isSaving = true);
-    try {
+    final newTitle = _titleController.text.trim();
+    if (newTitle.isNotEmpty && newTitle != _task!.title) {
       await ref.read(taskActionsProvider.notifier).updateTask(
             id: _task!.id,
-            title: _titleController.text.trim(),
-            notes: _notesController.text.trim().isEmpty
-                ? null
-                : _notesController.text.trim(),
+            title: newTitle,
           );
-      setState(() => _isEditing = false);
-    } finally {
-      if (mounted) setState(() => _isSaving = false);
     }
+    setState(() => _isEditingTitle = false);
+  }
+
+  Future<void> _saveNotes() async {
+    if (_task == null) return;
+    final newNotes = _notesController.text.trim();
+    if (newNotes != (_task!.notes ?? '')) {
+      await ref.read(taskActionsProvider.notifier).updateTask(
+            id: _task!.id,
+            notes: newNotes.isEmpty ? null : newNotes,
+          );
+    }
+    setState(() => _isEditingNotes = false);
   }
 
   bool _hasUnsavedEdits(TaskEntity task) {
-    if (!_isEditing) return false;
-    final titleChanged = _titleController.text.trim() != task.title;
-    final notesChanged = _notesController.text.trim() != (task.notes ?? '');
+    final titleChanged = _isEditingTitle && _titleController.text.trim() != task.title;
+    final notesChanged = _isEditingNotes && _notesController.text.trim() != (task.notes ?? '');
     return titleChanged || notesChanged;
   }
 
   Future<bool?> _showUnsavedChangesSheet(BuildContext context) {
     return showModalBottomSheet<bool>(
       context: context,
+      isScrollControlled: true,
       builder: (ctx) => Padding(
         padding: const EdgeInsets.all(AppConstants.space4),
         child: Column(
@@ -91,7 +99,7 @@ class _TaskDetailScreenState extends ConsumerState<TaskDetailScreen> {
             Text('Unsaved Changes', style: Theme.of(ctx).textTheme.titleMedium),
             const SizedBox(height: AppConstants.space2),
             Text(
-              'You have unsaved changes. Would you like to save them before leaving?',
+              'You have modified task details. Would you like to save before leaving?',
               style: Theme.of(ctx).textTheme.bodySmall?.copyWith(
                     color: Theme.of(ctx).colorScheme.onSurfaceVariant,
                   ),
@@ -101,7 +109,8 @@ class _TaskDetailScreenState extends ConsumerState<TaskDetailScreen> {
               leading: const Icon(Icons.save_outlined),
               title: const Text('Save & Leave'),
               onTap: () async {
-                await _saveChanges();
+                await _saveTitle();
+                await _saveNotes();
                 if (ctx.mounted) Navigator.pop(ctx, true);
               },
             ),
@@ -132,7 +141,7 @@ class _TaskDetailScreenState extends ConsumerState<TaskDetailScreen> {
       data: (task) {
         if (task == null) {
           return Scaffold(
-            appBar: AppBar(title: const Text('Task')),
+            appBar: AppBar(title: const Text('Task Details')),
             body: const Center(child: Text('Task not found')),
           );
         }
@@ -165,214 +174,389 @@ class _TaskDetailScreenState extends ConsumerState<TaskDetailScreen> {
                   }
                 },
               ),
-            actions: [
-              if (_isEditing)
-                TextButton(
-                  onPressed: _isSaving ? null : _saveChanges,
-                  child: _isSaving
-                      ? const SizedBox(
-                          width: 16,
-                          height: 16,
-                          child: CircularProgressIndicator(strokeWidth: 2),
-                        )
-                      : const Text('Save'),
-                )
-              else
-                IconButton(
-                  icon: const Icon(Icons.edit_outlined),
-                  tooltip: 'Edit',
-                  onPressed: () => setState(() => _isEditing = true),
+              title: Text(
+                task.projectName ?? 'Task Details',
+                style: theme.textTheme.titleMedium?.copyWith(
+                  fontWeight: FontWeight.w600,
                 ),
-              IconButton(
-                icon: const Icon(Icons.more_vert_rounded),
-                onPressed: () => _showTaskMenu(context, task),
               ),
-            ],
-          ),
-          body: SingleChildScrollView(
-            padding: const EdgeInsets.all(AppConstants.space4),
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                // Title row with checkbox
-                Row(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    Padding(
-                      padding: const EdgeInsets.only(top: 4),
-                      child: OrbitCheckbox(
-                        isChecked: task.isCompleted,
-                        onChanged: (_) => ref
-                            .read(taskActionsProvider.notifier)
-                            .toggleCompleted(task.id, completed: !task.isCompleted),
-                        borderColor: task.priority != TaskPriority.none
-                            ? task.priority.colorFor(theme.brightness)
-                            : null,
-                        checkColor: task.priority != TaskPriority.none
-                            ? task.priority.colorFor(theme.brightness)
-                            : null,
-                        size: 26,
-                      ),
-                    ),
-                    const SizedBox(width: AppConstants.space3),
-                    Expanded(
-                      child: _isEditing
-                          ? TextField(
-                              controller: _titleController,
-                              style: theme.textTheme.titleLarge?.copyWith(
-                                decoration: task.isCompleted
-                                    ? TextDecoration.lineThrough
-                                    : null,
-                              ),
-                              decoration: const InputDecoration(
-                                border: InputBorder.none,
-                                filled: false,
-                              ),
-                              textCapitalization: TextCapitalization.sentences,
-                              maxLines: null,
-                              autofocus: true,
-                            )
-                          : Text(
-                              task.title,
-                              style: theme.textTheme.titleLarge?.copyWith(
-                                color: task.isCompleted
-                                    ? colorScheme.onSurface.withOpacity(0.5)
-                                    : colorScheme.onSurface,
-                                decoration: task.isCompleted
-                                    ? TextDecoration.lineThrough
-                                    : null,
-                              ),
-                            ),
-                    ),
-                  ],
+              centerTitle: true,
+              actions: [
+                IconButton(
+                  icon: const Icon(Icons.more_vert_rounded),
+                  onPressed: () => _showTaskMenu(context, task),
                 ),
-
-                const SizedBox(height: AppConstants.space4),
-                const Divider(),
-                const SizedBox(height: AppConstants.space3),
-
-                // Metadata fields
-                _MetaField(
-                  icon: Icons.calendar_today_rounded,
-                  label: 'Due date',
-                  value: task.dueDate != null
-                      ? DateFormat('EEE, d MMM yyyy').format(task.dueDate!)
-                      : null,
-                  placeholder: 'No due date',
-                  isOverdue: task.isOverdue,
-                  onTap: () => _editDueDate(task),
-                ),
-
-                _MetaField(
-                  icon: Icons.flag_outlined,
-                  label: 'Priority',
-                  value: task.priority != TaskPriority.none
-                      ? task.priority.label
-                      : null,
-                  placeholder: 'No priority',
-                  iconColor: task.priority != TaskPriority.none
-                      ? task.priority.colorFor(theme.brightness)
-                      : null,
-                  onTap: () => _editPriority(task),
-                ),
-
-                _MetaField(
-                  icon: Icons.circle_outlined,
-                  label: 'Project',
-                  value: task.projectName,
-                  placeholder: 'No project (Inbox)',
-                  onTap: () {}, // TODO: project picker
-                ),
-
-                const SizedBox(height: AppConstants.space4),
-
-                // Notes section
-                Text(
-                  'Notes',
-                  style: theme.textTheme.labelMedium?.copyWith(
-                    color: colorScheme.onSurfaceVariant,
-                    fontWeight: FontWeight.w600,
-                  ),
-                ),
-                const SizedBox(height: AppConstants.space2),
-                if (_isEditing)
-                  TextField(
-                    controller: _notesController,
-                    maxLines: null,
-                    decoration: InputDecoration(
-                      hintText: 'Add notes…',
-                      border: OutlineInputBorder(
-                        borderRadius:
-                            BorderRadius.circular(AppConstants.radiusMD),
-                      ),
-                    ),
-                  )
-                else
-                  GestureDetector(
-                    onTap: () => setState(() => _isEditing = true),
-                    child: Container(
-                      width: double.infinity,
-                      padding: const EdgeInsets.all(AppConstants.space3),
-                      decoration: BoxDecoration(
-                        color: colorScheme.surfaceContainerLow,
-                        borderRadius:
-                            BorderRadius.circular(AppConstants.radiusMD),
-                        border: Border.all(color: colorScheme.outlineVariant),
-                      ),
-                      child: Text(
-                        task.notes?.isNotEmpty == true
-                            ? task.notes!
-                            : 'Tap to add notes…',
-                        style: theme.textTheme.bodyMedium?.copyWith(
-                          color: task.notes?.isNotEmpty == true
-                              ? colorScheme.onSurface
-                              : colorScheme.onSurfaceVariant,
-                        ),
-                      ),
-                    ),
-                  ),
-
-                const SizedBox(height: AppConstants.space4),
-
-                // Subtasks section
-                if (task.hasSubtasks) ...[
-                  _SubtaskSection(task: task),
-                  const SizedBox(height: AppConstants.space4),
-                ],
-
-                // Add subtask button
-                TextButton.icon(
-                  icon: const Icon(Icons.add_rounded, size: 18),
-                  label: const Text('Add subtask'),
-                  onPressed: () => _showAddSubtask(task.id),
-                  style: TextButton.styleFrom(
-                    padding: EdgeInsets.zero,
-                    alignment: Alignment.centerLeft,
-                  ),
-                ),
-
-                const SizedBox(height: AppConstants.space8),
-
-                // Meta timestamps
-                Text(
-                  'Created ${_formatTimestamp(task.createdAt)}',
-                  style: theme.textTheme.bodySmall?.copyWith(
-                    color: colorScheme.onSurfaceVariant.withOpacity(0.6),
-                  ),
-                ),
-                if (task.completedAt != null)
-                  Text(
-                    'Completed ${_formatTimestamp(task.completedAt!)}',
-                    style: theme.textTheme.bodySmall?.copyWith(
-                      color: colorScheme.primary.withOpacity(0.7),
-                    ),
-                  ),
               ],
             ),
+            body: SingleChildScrollView(
+              padding: const EdgeInsets.symmetric(
+                horizontal: AppConstants.space4,
+                vertical: AppConstants.space2,
+              ),
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  // ── Hero Title Card (Crisp Surface + High Contrast Checkbox) ──
+                  Container(
+                    width: double.infinity,
+                    padding: const EdgeInsets.all(AppConstants.space4),
+                    decoration: BoxDecoration(
+                      color: colorScheme.surface,
+                      borderRadius: BorderRadius.circular(AppConstants.radiusLG),
+                      border: Border.all(
+                        color: colorScheme.outlineVariant.withValues(alpha: 0.5),
+                      ),
+                      boxShadow: [
+                        BoxShadow(
+                          color: Colors.black.withValues(alpha: 0.03),
+                          blurRadius: 10,
+                          offset: const Offset(0, 4),
+                        ),
+                      ],
+                    ),
+                    child: Row(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        Padding(
+                          padding: const EdgeInsets.only(top: 2),
+                          child: OrbitCheckbox(
+                            isChecked: task.isCompleted,
+                            onChanged: (_) => ref
+                                .read(taskActionsProvider.notifier)
+                                .toggleCompleted(task.id, completed: !task.isCompleted),
+                            borderColor: task.priority != TaskPriority.none
+                                ? task.priority.colorFor(theme.brightness)
+                                : colorScheme.primary,
+                            checkColor: task.priority != TaskPriority.none
+                                ? task.priority.colorFor(theme.brightness)
+                                : colorScheme.primary,
+                            size: 26,
+                          ),
+                        ),
+                        const SizedBox(width: AppConstants.space3),
+                        Expanded(
+                          child: _isEditingTitle
+                              ? TextField(
+                                  controller: _titleController,
+                                  style: theme.textTheme.titleLarge?.copyWith(
+                                    fontWeight: FontWeight.w700,
+                                  ),
+                                  decoration: const InputDecoration(
+                                    border: InputBorder.none,
+                                    isDense: true,
+                                    contentPadding: EdgeInsets.zero,
+                                  ),
+                                  textCapitalization: TextCapitalization.sentences,
+                                  maxLines: null,
+                                  autofocus: true,
+                                  onEditingComplete: _saveTitle,
+                                  onTapOutside: (_) => _saveTitle(),
+                                )
+                              : GestureDetector(
+                                  onTap: () => setState(() => _isEditingTitle = true),
+                                  child: Text(
+                                    task.title,
+                                    style: theme.textTheme.titleLarge?.copyWith(
+                                      fontWeight: FontWeight.w700,
+                                      color: task.isCompleted
+                                          ? colorScheme.onSurface.withValues(alpha: 0.5)
+                                          : colorScheme.onSurface,
+                                      decoration: task.isCompleted
+                                          ? TextDecoration.lineThrough
+                                          : null,
+                                    ),
+                                  ),
+                                ),
+                        ),
+                      ],
+                    ),
+                  ),
+
+                  const SizedBox(height: AppConstants.space4),
+
+                  // ── Properties Surface Card (Instant Pickers) ────────────
+                  Container(
+                    decoration: BoxDecoration(
+                      color: colorScheme.surface,
+                      borderRadius: BorderRadius.circular(AppConstants.radiusLG),
+                      border: Border.all(
+                        color: colorScheme.outlineVariant.withValues(alpha: 0.5),
+                      ),
+                      boxShadow: [
+                        BoxShadow(
+                          color: Colors.black.withValues(alpha: 0.03),
+                          blurRadius: 10,
+                          offset: const Offset(0, 4),
+                        ),
+                      ],
+                    ),
+                    child: Column(
+                      children: [
+                        // Due Date Property Row
+                        _PropertyTile(
+                          icon: Icons.calendar_today_rounded,
+                          iconColor: task.isOverdue
+                              ? colorScheme.error
+                              : task.dueDate != null
+                                  ? colorScheme.primary
+                                  : colorScheme.onSurfaceVariant,
+                          label: 'Due date',
+                          valueText: task.dueDate != null
+                              ? DateFormat('EEE, d MMM yyyy').format(task.dueDate!)
+                              : 'No due date',
+                          valueColor: task.isOverdue
+                              ? colorScheme.error
+                              : task.dueDate != null
+                                  ? colorScheme.primary
+                                  : colorScheme.onSurfaceVariant,
+                          isAccent: task.dueDate != null,
+                          onTap: () => _showInstantDatePicker(context, task),
+                        ),
+                        const Divider(height: 1, indent: 56),
+
+                        // Priority Property Row
+                        _PropertyTile(
+                          icon: task.priority.icon,
+                          iconColor: task.priority != TaskPriority.none
+                              ? task.priority.colorFor(theme.brightness)
+                              : colorScheme.onSurfaceVariant,
+                          label: 'Priority',
+                          valueText: task.priority != TaskPriority.none
+                              ? task.priority.label
+                              : 'No priority',
+                          valueColor: task.priority != TaskPriority.none
+                              ? task.priority.colorFor(theme.brightness)
+                              : colorScheme.onSurfaceVariant,
+                          isAccent: task.priority != TaskPriority.none,
+                          onTap: () => _showInstantPriorityPicker(context, task),
+                        ),
+                        const Divider(height: 1, indent: 56),
+
+                        // Project Property Row
+                        _PropertyTile(
+                          icon: Icons.folder_open_rounded,
+                          iconColor: task.projectId != null
+                              ? colorScheme.primary
+                              : colorScheme.onSurfaceVariant,
+                          label: 'Project',
+                          valueText: task.projectName ?? 'Inbox',
+                          valueColor: task.projectId != null
+                              ? colorScheme.onSurface
+                              : colorScheme.onSurfaceVariant,
+                          isAccent: task.projectId != null,
+                          onTap: () => _showInstantProjectPicker(context, task),
+                        ),
+                      ],
+                    ),
+                  ),
+
+                  const SizedBox(height: AppConstants.space5),
+
+                  // ── Notes Card ───────────────────────────────────────────
+                  Text(
+                    'NOTES',
+                    style: theme.textTheme.labelSmall?.copyWith(
+                      color: colorScheme.primary,
+                      fontWeight: FontWeight.w800,
+                      letterSpacing: 1.1,
+                    ),
+                  ),
+                  const SizedBox(height: AppConstants.space2),
+                  Container(
+                    width: double.infinity,
+                    padding: const EdgeInsets.all(AppConstants.space3),
+                    decoration: BoxDecoration(
+                      color: colorScheme.surface,
+                      borderRadius: BorderRadius.circular(AppConstants.radiusMD),
+                      border: Border.all(
+                        color: _isEditingNotes
+                            ? colorScheme.primary
+                            : colorScheme.outlineVariant.withValues(alpha: 0.4),
+                      ),
+                      boxShadow: [
+                        BoxShadow(
+                          color: Colors.black.withValues(alpha: 0.02),
+                          blurRadius: 6,
+                          offset: const Offset(0, 2),
+                        ),
+                      ],
+                    ),
+                    child: _isEditingNotes
+                        ? TextField(
+                            controller: _notesController,
+                            maxLines: null,
+                            minLines: 3,
+                            style: theme.textTheme.bodyMedium,
+                            decoration: const InputDecoration(
+                              hintText: 'Add extra context, links, or instructions…',
+                              border: InputBorder.none,
+                              isDense: true,
+                            ),
+                            autofocus: true,
+                            onTapOutside: (_) => _saveNotes(),
+                          )
+                        : GestureDetector(
+                            onTap: () => setState(() => _isEditingNotes = true),
+                            child: Text(
+                              task.notes?.isNotEmpty == true
+                                  ? task.notes!
+                                  : 'Tap to add notes…',
+                              style: theme.textTheme.bodyMedium?.copyWith(
+                                color: task.notes?.isNotEmpty == true
+                                    ? colorScheme.onSurface
+                                    : colorScheme.onSurfaceVariant.withValues(alpha: 0.7),
+                              ),
+                            ),
+                          ),
+                  ),
+
+                  const SizedBox(height: AppConstants.space5),
+
+                  // ── Subtasks Card ─────────────────────────────────────────
+                  Row(
+                    mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                    children: [
+                      Text(
+                        'SUBTASKS',
+                        style: theme.textTheme.labelSmall?.copyWith(
+                          color: colorScheme.primary,
+                          fontWeight: FontWeight.w800,
+                          letterSpacing: 1.1,
+                        ),
+                      ),
+                      if (task.hasSubtasks)
+                        Text(
+                          '${task.completedSubtaskCount}/${task.subtasks.length}',
+                          style: theme.textTheme.labelSmall?.copyWith(
+                            fontWeight: FontWeight.w700,
+                            color: colorScheme.onSurfaceVariant,
+                          ),
+                        ),
+                    ],
+                  ),
+                  const SizedBox(height: AppConstants.space2),
+
+                  if (task.hasSubtasks) ...[
+                    // Subtask Progress Bar
+                    ClipRRect(
+                      borderRadius: BorderRadius.circular(4),
+                      child: LinearProgressIndicator(
+                        value: task.completedSubtaskCount / task.subtasks.length,
+                        minHeight: 6,
+                        backgroundColor: colorScheme.surfaceContainerHighest,
+                        valueColor: AlwaysStoppedAnimation<Color>(colorScheme.primary),
+                      ),
+                    ),
+                    const SizedBox(height: AppConstants.space3),
+
+                    // Subtask List
+                    ...task.subtasks.map((subtask) {
+                      return Container(
+                        margin: const EdgeInsets.only(bottom: AppConstants.space2),
+                        decoration: BoxDecoration(
+                          color: colorScheme.surface,
+                          borderRadius: BorderRadius.circular(AppConstants.radiusMD),
+                          border: Border.all(
+                            color: colorScheme.outlineVariant.withValues(alpha: 0.3),
+                          ),
+                        ),
+                        child: ListTile(
+                          dense: true,
+                          leading: Checkbox(
+                            value: subtask.isCompleted,
+                            onChanged: (val) {
+                              ref.read(taskRepositoryProvider).toggleSubtask(
+                                    subtask.id,
+                                    completed: val ?? false,
+                                  );
+                            },
+                          ),
+                          title: Text(
+                            subtask.title,
+                            style: theme.textTheme.bodyMedium?.copyWith(
+                              decoration: subtask.isCompleted
+                                  ? TextDecoration.lineThrough
+                                  : null,
+                              color: subtask.isCompleted
+                                  ? colorScheme.onSurfaceVariant
+                                  : colorScheme.onSurface,
+                            ),
+                          ),
+                          trailing: IconButton(
+                            icon: const Icon(Icons.close_rounded, size: 18),
+                            onPressed: () {
+                              ref.read(taskRepositoryProvider).deleteSubtask(subtask.id);
+                            },
+                          ),
+                        ),
+                      );
+                    }).toList(),
+                  ],
+
+                  // Inline Subtask Adder
+                  Container(
+                    margin: const EdgeInsets.only(top: AppConstants.space1),
+                    padding: const EdgeInsets.symmetric(horizontal: AppConstants.space3),
+                    decoration: BoxDecoration(
+                      color: colorScheme.surfaceContainerHighest.withValues(alpha: 0.25),
+                      borderRadius: BorderRadius.circular(AppConstants.radiusMD),
+                    ),
+                    child: Row(
+                      children: [
+                        Icon(Icons.add_rounded, color: colorScheme.primary, size: 20),
+                        const SizedBox(width: AppConstants.space2),
+                        Expanded(
+                          child: TextField(
+                            controller: _subtaskController,
+                            decoration: const InputDecoration(
+                              hintText: 'Add subtask…',
+                              border: InputBorder.none,
+                              isDense: true,
+                            ),
+                            onSubmitted: (val) {
+                              final text = val.trim();
+                              if (text.isNotEmpty) {
+                                ref
+                                    .read(taskRepositoryProvider)
+                                    .addSubtask(task.id, text);
+                                _subtaskController.clear();
+                              }
+                            },
+                          ),
+                        ),
+                      ],
+                    ),
+                  ),
+
+                  const SizedBox(height: AppConstants.space8),
+
+                  // ── Metadata Footer ───────────────────────────────────────
+                  Center(
+                    child: Column(
+                      children: [
+                        Text(
+                          'Created ${DateFormat('d MMM yyyy, HH:mm').format(task.createdAt)}',
+                          style: theme.textTheme.bodySmall?.copyWith(
+                            color: colorScheme.onSurfaceVariant.withValues(alpha: 0.6),
+                          ),
+                        ),
+                        if (task.completedAt != null)
+                          Text(
+                            'Completed ${DateFormat('d MMM yyyy, HH:mm').format(task.completedAt!)}',
+                            style: theme.textTheme.bodySmall?.copyWith(
+                              color: colorScheme.primary.withValues(alpha: 0.7),
+                            ),
+                          ),
+                      ],
+                    ),
+                  ),
+                  const SizedBox(height: AppConstants.space6),
+                ],
+              ),
+            ),
           ),
-        ),
-      );
-    },
+        );
+      },
       loading: () => Scaffold(
         appBar: AppBar(),
         body: const Center(child: CircularProgressIndicator()),
@@ -384,9 +568,311 @@ class _TaskDetailScreenState extends ConsumerState<TaskDetailScreen> {
     );
   }
 
+  // ── Instant Pickers (Overflow Proof) ──────────────────────────────────────
+
+  /// Instant Date Picker Sheet with quick presets (Today, Tomorrow, Weekend, Custom).
+  void _showInstantDatePicker(BuildContext context, TaskEntity task) {
+    final now = DateTime.now();
+    final today = DateTime(now.year, now.month, now.day);
+    final tomorrow = today.add(const Duration(days: 1));
+    final weekend = today.add(Duration(days: (6 - today.weekday) % 7 + 1));
+    final nextWeek = today.add(const Duration(days: 7));
+
+    showModalBottomSheet<void>(
+      context: context,
+      isScrollControlled: true,
+      backgroundColor: Colors.transparent,
+      builder: (ctx) => Container(
+        constraints: BoxConstraints(
+          maxHeight: MediaQuery.of(ctx).size.height * 0.75,
+        ),
+        decoration: BoxDecoration(
+          color: Theme.of(ctx).colorScheme.surface,
+          borderRadius: const BorderRadius.vertical(top: Radius.circular(28)),
+        ),
+        padding: EdgeInsets.fromLTRB(
+          AppConstants.space4,
+          AppConstants.space3,
+          AppConstants.space4,
+          MediaQuery.of(ctx).padding.bottom + AppConstants.space4,
+        ),
+        child: SingleChildScrollView(
+          physics: const BouncingScrollPhysics(),
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Center(
+                child: Container(
+                  width: 36,
+                  height: 4,
+                  decoration: BoxDecoration(
+                    color: Theme.of(ctx).colorScheme.onSurfaceVariant.withValues(alpha: 0.3),
+                    borderRadius: BorderRadius.circular(2),
+                  ),
+                ),
+              ),
+              const SizedBox(height: AppConstants.space3),
+              Text('Set Due Date', style: Theme.of(ctx).textTheme.titleMedium),
+              const SizedBox(height: AppConstants.space4),
+
+              ListTile(
+                leading: const Icon(Icons.wb_sunny_outlined, color: Colors.orange),
+                title: const Text('Today'),
+                subtitle: Text(DateFormat('EEE, d MMM').format(today)),
+                onTap: () => _applyDueDate(today, ctx),
+              ),
+              ListTile(
+                leading: const Icon(Icons.wb_twilight_rounded, color: Colors.indigo),
+                title: const Text('Tomorrow'),
+                subtitle: Text(DateFormat('EEE, d MMM').format(tomorrow)),
+                onTap: () => _applyDueDate(tomorrow, ctx),
+              ),
+              ListTile(
+                leading: const Icon(Icons.weekend_outlined, color: Colors.teal),
+                title: const Text('This Weekend'),
+                subtitle: Text(DateFormat('EEE, d MMM').format(weekend)),
+                onTap: () => _applyDueDate(weekend, ctx),
+              ),
+              ListTile(
+                leading: const Icon(Icons.next_week_outlined, color: Colors.purple),
+                title: const Text('Next Week'),
+                subtitle: Text(DateFormat('EEE, d MMM').format(nextWeek)),
+                onTap: () => _applyDueDate(nextWeek, ctx),
+              ),
+              const Divider(),
+              ListTile(
+                leading: const Icon(Icons.calendar_month_rounded),
+                title: const Text('Pick Custom Date…'),
+                onTap: () async {
+                  Navigator.pop(ctx);
+                  final picked = await showDatePicker(
+                    context: context,
+                    initialDate: task.dueDate ?? DateTime.now(),
+                    firstDate: DateTime.now().subtract(const Duration(days: 365)),
+                    lastDate: DateTime.now().add(const Duration(days: 365 * 5)),
+                  );
+                  if (picked != null && mounted) {
+                    await ref.read(taskActionsProvider.notifier).updateTask(
+                          id: task.id,
+                          dueDate: picked,
+                        );
+                    setState(() {});
+                  }
+                },
+              ),
+              if (task.dueDate != null)
+                ListTile(
+                  leading: const Icon(Icons.clear_rounded, color: Colors.red),
+                  title: const Text('Remove Due Date', style: TextStyle(color: Colors.red)),
+                  onTap: () async {
+                    Navigator.pop(ctx);
+                    await ref.read(taskActionsProvider.notifier).updateTask(
+                          id: task.id,
+                          clearDueDate: true,
+                        );
+                    setState(() {});
+                  },
+                ),
+            ],
+          ),
+        ),
+      ),
+    );
+  }
+
+  Future<void> _applyDueDate(DateTime date, BuildContext sheetContext) async {
+    Navigator.pop(sheetContext);
+    await ref.read(taskActionsProvider.notifier).updateTask(
+          id: widget.taskId,
+          dueDate: date,
+        );
+    if (mounted) setState(() {});
+  }
+
+  /// Instant Priority Picker Sheet.
+  void _showInstantPriorityPicker(BuildContext context, TaskEntity task) {
+    showModalBottomSheet<void>(
+      context: context,
+      isScrollControlled: true,
+      backgroundColor: Colors.transparent,
+      builder: (ctx) => Container(
+        constraints: BoxConstraints(
+          maxHeight: MediaQuery.of(ctx).size.height * 0.75,
+        ),
+        decoration: BoxDecoration(
+          color: Theme.of(ctx).colorScheme.surface,
+          borderRadius: const BorderRadius.vertical(top: Radius.circular(28)),
+        ),
+        padding: EdgeInsets.fromLTRB(
+          AppConstants.space4,
+          AppConstants.space3,
+          AppConstants.space4,
+          MediaQuery.of(ctx).padding.bottom + AppConstants.space4,
+        ),
+        child: SingleChildScrollView(
+          physics: const BouncingScrollPhysics(),
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Center(
+                child: Container(
+                  width: 36,
+                  height: 4,
+                  decoration: BoxDecoration(
+                    color: Theme.of(ctx).colorScheme.onSurfaceVariant.withValues(alpha: 0.3),
+                    borderRadius: BorderRadius.circular(2),
+                  ),
+                ),
+              ),
+              const SizedBox(height: AppConstants.space3),
+              Text('Set Priority', style: Theme.of(ctx).textTheme.titleMedium),
+              const SizedBox(height: AppConstants.space4),
+              ...TaskPriority.values.map((p) {
+                final color = p == TaskPriority.none
+                    ? Theme.of(ctx).colorScheme.onSurfaceVariant
+                    : p.colorFor(Theme.of(ctx).brightness);
+                final isSelected = task.priority == p;
+
+                return ListTile(
+                  leading: Icon(p.icon, color: color),
+                  title: Text(p.label),
+                  trailing: isSelected
+                      ? Icon(Icons.check_rounded, color: Theme.of(ctx).colorScheme.primary)
+                      : null,
+                  onTap: () async {
+                    Navigator.pop(ctx);
+                    await ref.read(taskActionsProvider.notifier).updateTask(
+                          id: task.id,
+                          priority: p.value,
+                        );
+                    if (mounted) setState(() {});
+                  },
+                );
+              }),
+            ],
+          ),
+        ),
+      ),
+    );
+  }
+
+  /// Instant Project Picker Sheet (Overflow Safe).
+  void _showInstantProjectPicker(BuildContext context, TaskEntity task) {
+    showModalBottomSheet<void>(
+      context: context,
+      isScrollControlled: true,
+      backgroundColor: Colors.transparent,
+      builder: (ctx) => Consumer(
+        builder: (context, ref, _) {
+          final projectsAsync = ref.watch(projectsProvider);
+
+          return Container(
+            constraints: BoxConstraints(
+              maxHeight: MediaQuery.of(ctx).size.height * 0.75,
+            ),
+            decoration: BoxDecoration(
+              color: Theme.of(ctx).colorScheme.surface,
+              borderRadius: const BorderRadius.vertical(top: Radius.circular(28)),
+            ),
+            padding: EdgeInsets.fromLTRB(
+              AppConstants.space4,
+              AppConstants.space3,
+              AppConstants.space4,
+              MediaQuery.of(ctx).padding.bottom + AppConstants.space4,
+            ),
+            child: SingleChildScrollView(
+              physics: const BouncingScrollPhysics(),
+              child: Column(
+                mainAxisSize: MainAxisSize.min,
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Center(
+                    child: Container(
+                      width: 36,
+                      height: 4,
+                      decoration: BoxDecoration(
+                        color: Theme.of(ctx).colorScheme.onSurfaceVariant.withValues(alpha: 0.3),
+                        borderRadius: BorderRadius.circular(2),
+                      ),
+                    ),
+                  ),
+                  const SizedBox(height: AppConstants.space3),
+                  Text('Move to Project', style: Theme.of(ctx).textTheme.titleMedium),
+                  const SizedBox(height: AppConstants.space4),
+
+                  // Inbox Option
+                  ListTile(
+                    leading: const Icon(Icons.inbox_rounded),
+                    title: const Text('Inbox'),
+                    trailing: task.projectId == null
+                        ? Icon(Icons.check_rounded, color: Theme.of(ctx).colorScheme.primary)
+                        : null,
+                    onTap: () async {
+                      Navigator.pop(ctx);
+                      await ref.read(taskActionsProvider.notifier).updateTask(
+                            id: task.id,
+                            clearProject: true,
+                          );
+                      if (mounted) setState(() {});
+                    },
+                  ),
+                  const Divider(),
+
+                  // User Projects
+                  projectsAsync.when(
+                    data: (projects) => Column(
+                      mainAxisSize: MainAxisSize.min,
+                      children: projects.map((proj) {
+                        final isSelected = task.projectId == proj.id;
+                        final projColor = _parseColor(proj.colorHex);
+
+                        return ListTile(
+                          leading: Container(
+                            width: 24,
+                            height: 24,
+                            decoration: BoxDecoration(
+                              shape: BoxShape.circle,
+                              color: projColor,
+                            ),
+                            child: Icon(
+                              _parseIcon(proj.icon),
+                              size: 14,
+                              color: Colors.white,
+                            ),
+                          ),
+                          title: Text(proj.name),
+                          trailing: isSelected
+                              ? Icon(Icons.check_rounded, color: Theme.of(ctx).colorScheme.primary)
+                              : null,
+                          onTap: () async {
+                            Navigator.pop(ctx);
+                            await ref.read(taskActionsProvider.notifier).updateTask(
+                                  id: task.id,
+                                  projectId: proj.id,
+                                );
+                            if (mounted) setState(() {});
+                          },
+                        );
+                      }).toList(),
+                    ),
+                    loading: () => const Center(child: CircularProgressIndicator()),
+                    error: (_, __) => const SizedBox(),
+                  ),
+                ],
+              ),
+            ),
+          );
+        },
+      ),
+    );
+  }
+
   void _showTaskMenu(BuildContext context, TaskEntity task) {
     showModalBottomSheet<void>(
       context: context,
+      isScrollControlled: true,
       builder: (ctx) => Padding(
         padding: const EdgeInsets.all(AppConstants.space4),
         child: Column(
@@ -447,209 +933,84 @@ class _TaskDetailScreenState extends ConsumerState<TaskDetailScreen> {
     }
   }
 
-  Future<void> _editDueDate(TaskEntity task) async {
-    final picked = await showDatePicker(
-      context: context,
-      initialDate: task.dueDate ?? DateTime.now(),
-      firstDate: DateTime.now().subtract(const Duration(days: 365)),
-      lastDate: DateTime.now().add(const Duration(days: 365 * 5)),
-    );
-    if (picked != null && mounted) {
-      await ref.read(taskActionsProvider.notifier).updateTask(
-            id: task.id,
-            dueDate: picked,
-          );
-    }
+  Color _parseColor(String hex) {
+    final clean = hex.replaceFirst('#', '');
+    return Color(int.parse('FF$clean', radix: 16));
   }
 
-  Future<void> _editPriority(TaskEntity task) async {
-    final priority = await showModalBottomSheet<TaskPriority>(
-      context: context,
-      builder: (ctx) => Padding(
-        padding: const EdgeInsets.all(AppConstants.space4),
-        child: Column(
-          mainAxisSize: MainAxisSize.min,
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            Text('Priority', style: Theme.of(ctx).textTheme.titleMedium),
-            const SizedBox(height: AppConstants.space4),
-            ...TaskPriority.values.map((p) {
-              final color = p == TaskPriority.none
-                  ? Theme.of(ctx).colorScheme.onSurfaceVariant
-                  : p.colorFor(Theme.of(ctx).brightness);
-              return ListTile(
-                leading: Icon(p.icon, color: color),
-                title: Text(p.label),
-                trailing: task.priority == p
-                    ? Icon(Icons.check_rounded,
-                        color: Theme.of(ctx).colorScheme.primary)
-                    : null,
-                onTap: () => Navigator.pop(ctx, p),
-                shape: RoundedRectangleBorder(
-                  borderRadius: BorderRadius.circular(AppConstants.radiusMD),
-                ),
-              );
-            }),
-            SizedBox(height: MediaQuery.of(ctx).padding.bottom),
-          ],
-        ),
-      ),
-    );
-    if (priority != null && mounted) {
-      await ref.read(taskActionsProvider.notifier).updateTask(
-            id: task.id,
-            priority: priority.value,
-          );
-    }
-  }
-
-  void _showAddSubtask(String taskId) {
-    final controller = TextEditingController();
-    showDialog<void>(
-      context: context,
-      builder: (ctx) => AlertDialog(
-        title: const Text('Add subtask'),
-        content: TextField(
-          controller: controller,
-          autofocus: true,
-          textCapitalization: TextCapitalization.sentences,
-          decoration: const InputDecoration(hintText: 'Subtask title'),
-        ),
-        actions: [
-          TextButton(
-            onPressed: () => Navigator.pop(ctx),
-            child: const Text('Cancel'),
-          ),
-          FilledButton(
-            onPressed: () async {
-              final title = controller.text.trim();
-              if (title.isNotEmpty) {
-                await ref.read(taskRepositoryProvider).addSubtask(taskId, title);
-              }
-              if (ctx.mounted) Navigator.pop(ctx);
-            },
-            child: const Text('Add'),
-          ),
-        ],
-      ),
-    );
-  }
-
-  String _formatTimestamp(DateTime dt) {
-    return DateFormat('d MMM yyyy, HH:mm').format(dt);
-  }
+  IconData _parseIcon(String name) => switch (name) {
+        'work' => Icons.work_outline_rounded,
+        'home' => Icons.home_outlined,
+        'star' => Icons.star_outline_rounded,
+        'shopping' => Icons.shopping_bag_outlined,
+        'fitness' => Icons.fitness_center_rounded,
+        _ => Icons.folder_outlined,
+      };
 }
 
-// ──────────────────────────────────────────────────────────────────────────
-// Metadata field row
-// ──────────────────────────────────────────────────────────────────────────
-
-class _MetaField extends StatelessWidget {
-  const _MetaField({
+class _PropertyTile extends StatelessWidget {
+  const _PropertyTile({
     required this.icon,
+    required this.iconColor,
     required this.label,
-    required this.value,
-    required this.placeholder,
+    required this.valueText,
+    required this.valueColor,
+    required this.isAccent,
     required this.onTap,
-    this.iconColor,
-    this.isOverdue = false,
   });
 
   final IconData icon;
+  final Color iconColor;
   final String label;
-  final String? value;
-  final String placeholder;
+  final String valueText;
+  final Color valueColor;
+  final bool isAccent;
   final VoidCallback onTap;
-  final Color? iconColor;
-  final bool isOverdue;
 
   @override
   Widget build(BuildContext context) {
-    final theme = Theme.of(context);
-    final colorScheme = theme.colorScheme;
-    final displayColor = isOverdue ? OrbitColorTokens.priorityUrgent : null;
-
-    return ListTile(
-      contentPadding: EdgeInsets.zero,
-      dense: true,
-      leading: Icon(
-        icon,
-        size: 20,
-        color: iconColor ?? colorScheme.onSurfaceVariant,
-      ),
-      title: Text(
-        label,
-        style: theme.textTheme.bodySmall?.copyWith(
-          color: colorScheme.onSurfaceVariant,
-          fontWeight: FontWeight.w500,
-        ),
-      ),
-      subtitle: Text(
-        value ?? placeholder,
-        style: theme.textTheme.bodyMedium?.copyWith(
-          color: value != null
-              ? (displayColor ?? colorScheme.onSurface)
-              : colorScheme.onSurface.withOpacity(0.4),
-          fontWeight: value != null && isOverdue ? FontWeight.w600 : null,
-        ),
-      ),
+    return InkWell(
       onTap: onTap,
-      trailing: const Icon(Icons.chevron_right_rounded, size: 16),
-    );
-  }
-}
-
-// ──────────────────────────────────────────────────────────────────────────
-// Subtask section
-// ──────────────────────────────────────────────────────────────────────────
-
-class _SubtaskSection extends ConsumerWidget {
-  const _SubtaskSection({required this.task});
-  final TaskEntity task;
-
-  @override
-  Widget build(BuildContext context, WidgetRef ref) {
-    final theme = Theme.of(context);
-    final colorScheme = theme.colorScheme;
-
-    return Column(
-      crossAxisAlignment: CrossAxisAlignment.start,
-      children: [
-        Text(
-          'Subtasks',
-          style: theme.textTheme.labelMedium?.copyWith(
-            color: colorScheme.onSurfaceVariant,
-            fontWeight: FontWeight.w600,
-          ),
+      child: Padding(
+        padding: const EdgeInsets.symmetric(
+          horizontal: AppConstants.space4,
+          vertical: AppConstants.space3,
         ),
-        const SizedBox(height: AppConstants.space2),
-        ...task.subtasks.map(
-          (subtask) => ListTile(
-            contentPadding: EdgeInsets.zero,
-            dense: true,
-            leading: Checkbox(
-              value: subtask.isCompleted,
-              onChanged: (_) => ref
-                  .read(taskRepositoryProvider)
-                  .toggleSubtask(subtask.id, completed: !subtask.isCompleted),
-              shape: RoundedRectangleBorder(
-                borderRadius: BorderRadius.circular(AppConstants.radiusXS),
+        child: Row(
+          children: [
+            Container(
+              width: 32,
+              height: 32,
+              decoration: BoxDecoration(
+                color: iconColor.withValues(alpha: 0.12),
+                shape: BoxShape.circle,
               ),
+              child: Icon(icon, size: 18, color: iconColor),
             ),
-            title: Text(
-              subtask.title,
-              style: theme.textTheme.bodyMedium?.copyWith(
-                decoration: subtask.isCompleted
-                    ? TextDecoration.lineThrough
-                    : null,
-                color: subtask.isCompleted
-                    ? colorScheme.onSurface.withOpacity(0.5)
-                    : null,
-              ),
+            const SizedBox(width: AppConstants.space3),
+            Text(
+              label,
+              style: Theme.of(context).textTheme.bodyMedium?.copyWith(
+                    fontWeight: FontWeight.w500,
+                  ),
             ),
-          ),
+            const Spacer(),
+            Text(
+              valueText,
+              style: Theme.of(context).textTheme.bodyMedium?.copyWith(
+                    fontWeight: isAccent ? FontWeight.w700 : FontWeight.w500,
+                    color: valueColor,
+                  ),
+            ),
+            const SizedBox(width: AppConstants.space1),
+            Icon(
+              Icons.chevron_right_rounded,
+              size: 20,
+              color: Theme.of(context).colorScheme.onSurfaceVariant.withValues(alpha: 0.5),
+            ),
+          ],
         ),
-      ],
+      ),
     );
   }
 }

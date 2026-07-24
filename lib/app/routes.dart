@@ -3,12 +3,16 @@ import 'package:go_router/go_router.dart';
 
 import '../../features/inbox/presentation/screens/inbox_screen.dart';
 import '../../features/today/presentation/screens/today_screen.dart';
+import '../../features/upcoming/presentation/screens/upcoming_screen.dart';
+import '../../features/matrix/presentation/screens/matrix_screen.dart';
+import '../../features/pomodoro/presentation/screens/pomodoro_screen.dart';
 import '../../features/projects/presentation/screens/projects_screen.dart';
 import '../../features/projects/presentation/screens/project_detail_screen.dart';
 import '../../features/all_tasks/presentation/screens/all_tasks_screen.dart';
 import '../../features/completed/presentation/screens/completed_screen.dart';
 import '../../features/tasks/presentation/screens/task_detail_screen.dart';
 import '../../features/settings/presentation/screens/settings_screen.dart';
+import '../../features/onboarding/presentation/screens/onboarding_screen.dart';
 import 'shell.dart';
 
 /// All GoRouter route definitions for Orbit Todo.
@@ -16,7 +20,7 @@ final router = GoRouter(
   initialLocation: '/inbox',
   debugLogDiagnostics: false,
   routes: [
-    // Main shell with persistent bottom navigation
+    // Main shell with persistent navigation
     StatefulShellRoute.indexedStack(
       builder: (context, state, navigationShell) {
         return AppShell(navigationShell: navigationShell);
@@ -44,24 +48,46 @@ final router = GoRouter(
           ],
         ),
 
-        // Branch 2: Projects
+        // Branch 2: Upcoming Calendar
+        StatefulShellBranch(
+          routes: [
+            GoRoute(
+              path: '/upcoming',
+              name: 'upcoming',
+              builder: (context, state) => const UpcomingScreen(),
+            ),
+          ],
+        ),
+
+        // Branch 3: Priority Matrix
+        StatefulShellBranch(
+          routes: [
+            GoRoute(
+              path: '/matrix',
+              name: 'matrix',
+              builder: (context, state) => const MatrixScreen(),
+            ),
+          ],
+        ),
+
+        // Branch 4: Pomodoro Focus
+        StatefulShellBranch(
+          routes: [
+            GoRoute(
+              path: '/pomodoro',
+              name: 'pomodoro',
+              builder: (context, state) => const PomodoroScreen(),
+            ),
+          ],
+        ),
+
+        // Branch 5: Projects
         StatefulShellBranch(
           routes: [
             GoRoute(
               path: '/projects',
               name: 'projects',
               builder: (context, state) => const ProjectsScreen(),
-            ),
-          ],
-        ),
-
-        // Branch 3: All Tasks
-        StatefulShellBranch(
-          routes: [
-            GoRoute(
-              path: '/tasks',
-              name: 'all_tasks',
-              builder: (context, state) => const AllTasksScreen(),
             ),
           ],
         ),
@@ -87,6 +113,12 @@ final router = GoRouter(
     ),
 
     GoRoute(
+      path: '/tasks',
+      name: 'all_tasks',
+      builder: (context, state) => const AllTasksScreen(),
+    ),
+
+    GoRoute(
       path: '/completed',
       name: 'completed',
       builder: (context, state) => const CompletedScreen(),
@@ -99,9 +131,9 @@ final router = GoRouter(
     ),
 
     GoRoute(
-      path: '/search',
-      name: 'search',
-      builder: (context, state) => const AllTasksScreen(),
+      path: '/onboarding',
+      name: 'onboarding',
+      builder: (context, state) => const OnboardingScreen(),
     ),
   ],
 );

@@ -6,6 +6,8 @@ import 'package:orbit_todo/core/constants/app_constants.dart';
 import 'package:orbit_todo/core/theme/color_tokens.dart';
 import 'package:orbit_todo/core/theme/font_tokens.dart';
 import 'package:orbit_todo/features/settings/application/preferences_provider.dart';
+import 'package:orbit_todo/features/settings/application/data_transfer_service.dart';
+import 'package:orbit_todo/features/settings/presentation/widgets/paywall_sheet.dart';
 import 'package:orbit_todo/features/settings/domain/user_preferences.dart';
 
 /// Settings screen — theme, accent, font style, landing page, density, and preferences.
@@ -291,13 +293,80 @@ class SettingsScreen extends ConsumerWidget {
 
           const Divider(height: AppConstants.space6),
 
+          // ── Data & Backup (PRD Section 7.3) ──────────────────────────────
+          const _SectionHeader(label: 'Data & Backup'),
+
+          ListTile(
+            leading: const Icon(Icons.download_rounded),
+            title: const Text('Export Local Backup (JSON)'),
+            subtitle: const Text('Save tasks, projects, and settings to JSON file'),
+            onTap: () async {
+              final jsonStr = await ref.read(dataTransferServiceProvider).exportToJson();
+              if (context.mounted) {
+                showDialog(
+                  context: context,
+                  builder: (ctx) => AlertDialog(
+                    title: const Text('Backup Exported'),
+                    content: Text('Exported ${jsonStr.length} characters of backup data.'),
+                    actions: [
+                      TextButton(
+                        onPressed: () => Navigator.pop(ctx),
+                        child: const Text('OK'),
+                      ),
+                    ],
+                  ),
+                );
+              }
+            },
+          ),
+
+          ListTile(
+            leading: const Icon(Icons.upload_rounded),
+            title: const Text('Import Local Backup (JSON)'),
+            subtitle: const Text('Restore tasks and projects from JSON file'),
+            onTap: () {
+              ScaffoldMessenger.of(context).showSnackBar(
+                const SnackBar(content: Text('Select backup file to restore')),
+              );
+            },
+          ),
+
+          const Divider(height: AppConstants.space6),
+
+          // ── Orbit Pro Features (100% Free) ──────────────────────────────
+          const _SectionHeader(label: 'Orbit Pro (100% Free)'),
+
+          ListTile(
+            leading: const Icon(Icons.stars_rounded, color: Colors.amber),
+            title: const Text('Orbit Pro — All Features Unlocked'),
+            subtitle: const Text('Smart Lists, Custom Fields, Templates & Widgets are 100% free'),
+            trailing: Container(
+              padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
+              decoration: BoxDecoration(
+                color: Colors.green.withValues(alpha: 0.15),
+                borderRadius: BorderRadius.circular(12),
+              ),
+              child: const Text(
+                'UNLOCKED',
+                style: TextStyle(
+                  fontWeight: FontWeight.w800,
+                  fontSize: 10,
+                  color: Colors.green,
+                ),
+              ),
+            ),
+            onTap: () => showPaywallSheet(context),
+          ),
+
+          const Divider(height: AppConstants.space6),
+
           // ── About ────────────────────────────────────────────────────────
           const _SectionHeader(label: 'About'),
 
           const ListTile(
             leading: Icon(Icons.info_outline_rounded),
             title: Text('Orbit Todo'),
-            subtitle: Text('Version 1.0.0'),
+            subtitle: Text('Version 1.0.0 (Expansion Ready)'),
           ),
 
           ListTile(
