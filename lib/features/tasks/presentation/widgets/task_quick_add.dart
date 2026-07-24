@@ -71,11 +71,12 @@ class _QuickAddSheetState extends ConsumerState<QuickAddSheet> {
     // Smart Natural Language Parsing
     if (_dueDate == null) {
       if (text.contains('today')) {
-        setState(() => _dueDate = DateTime.now());
+        _dueDate = DateTime.now();
       } else if (text.contains('tomorrow')) {
-        setState(() => _dueDate = DateTime.now().add(const Duration(days: 1)));
+        _dueDate = DateTime.now().add(const Duration(days: 1));
       }
     }
+    setState(() {});
   }
 
   Future<void> _save() async {
@@ -314,6 +315,13 @@ class _QuickAddSheetState extends ConsumerState<QuickAddSheet> {
                         : const Icon(Icons.arrow_upward_rounded, size: 18),
                     label: const Text('Add Task'),
                     style: FilledButton.styleFrom(
+                      backgroundColor: isTitleNotEmpty
+                          ? colorScheme.primary
+                          : colorScheme.surfaceContainerHighest.withValues(alpha: 0.5),
+                      foregroundColor: isTitleNotEmpty
+                          ? colorScheme.onPrimary
+                          : colorScheme.onSurfaceVariant.withValues(alpha: 0.5),
+                      elevation: isTitleNotEmpty ? 3 : 0,
                       padding: const EdgeInsets.symmetric(
                         horizontal: AppConstants.space4,
                         vertical: 10,

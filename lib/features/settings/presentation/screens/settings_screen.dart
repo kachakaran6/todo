@@ -197,7 +197,7 @@ class SettingsScreen extends ConsumerWidget {
                           borderRadius: BorderRadius.circular(AppConstants.radiusMD),
                           child: AnimatedContainer(
                             duration: 200.ms,
-                            width: 140,
+                            width: 165,
                             padding: const EdgeInsets.all(AppConstants.space3),
                             decoration: BoxDecoration(
                               color: isSelected
