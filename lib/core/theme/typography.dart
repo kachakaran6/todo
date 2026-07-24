@@ -1,37 +1,52 @@
 import 'package:flutter/material.dart';
 import 'package:google_fonts/google_fonts.dart';
+import 'font_tokens.dart';
 
 /// Orbit Todo Design System — Typography
 ///
-/// Inter-based type scale. All sizes follow an intentional hierarchy
-/// that works at normal and 200% text scale. Line heights tuned for
-/// readability, especially in task titles and notes.
+/// Multi-style type scale supporting 5 curated font options:
+/// Modern (Inter), Rounded (Nunito Sans), Editorial (Source Serif 4 + Inter),
+/// Geometric (Manrope), and Classic (System default UI).
 class OrbitTypography {
   OrbitTypography._();
 
-  /// Build the Inter-based TextTheme, respecting the color scheme's onSurface.
-  static TextTheme buildTextTheme(ColorScheme colorScheme) {
-    final base = GoogleFonts.interTextTheme();
+  /// Build the TextTheme based on the selected [AppFontStyle], respecting [ColorScheme].
+  static TextTheme buildTextTheme(
+    ColorScheme colorScheme, [
+    AppFontStyle fontStyle = AppFontStyle.modern,
+  ]) {
     final onSurface = colorScheme.onSurface;
     final onSurfaceVariant = colorScheme.onSurfaceVariant;
 
+    final TextTheme base = switch (fontStyle) {
+      AppFontStyle.modern => GoogleFonts.interTextTheme(),
+      AppFontStyle.rounded => GoogleFonts.nunitoSansTextTheme(),
+      AppFontStyle.editorial => GoogleFonts.interTextTheme(),
+      AppFontStyle.geometric => GoogleFonts.manropeTextTheme(),
+      AppFontStyle.classic => Typography.material2021().englishLike,
+    };
+
+    final TextTheme serifHeadings = fontStyle == AppFontStyle.editorial
+        ? GoogleFonts.sourceSerif4TextTheme()
+        : base;
+
     return base.copyWith(
       // Display — used for large numbers, celebration text
-      displayLarge: base.displayLarge?.copyWith(
+      displayLarge: serifHeadings.displayLarge?.copyWith(
         fontSize: 57,
         fontWeight: FontWeight.w700,
         letterSpacing: -0.25,
         color: onSurface,
         height: 1.12,
       ),
-      displayMedium: base.displayMedium?.copyWith(
+      displayMedium: serifHeadings.displayMedium?.copyWith(
         fontSize: 45,
         fontWeight: FontWeight.w700,
         letterSpacing: 0,
         color: onSurface,
         height: 1.16,
       ),
-      displaySmall: base.displaySmall?.copyWith(
+      displaySmall: serifHeadings.displaySmall?.copyWith(
         fontSize: 36,
         fontWeight: FontWeight.w600,
         letterSpacing: 0,
@@ -40,21 +55,21 @@ class OrbitTypography {
       ),
 
       // Headline — screen titles, section headers
-      headlineLarge: base.headlineLarge?.copyWith(
+      headlineLarge: serifHeadings.headlineLarge?.copyWith(
         fontSize: 32,
         fontWeight: FontWeight.w700,
         letterSpacing: -0.5,
         color: onSurface,
         height: 1.25,
       ),
-      headlineMedium: base.headlineMedium?.copyWith(
+      headlineMedium: serifHeadings.headlineMedium?.copyWith(
         fontSize: 24,
         fontWeight: FontWeight.w600,
         letterSpacing: -0.25,
         color: onSurface,
         height: 1.33,
       ),
-      headlineSmall: base.headlineSmall?.copyWith(
+      headlineSmall: serifHeadings.headlineSmall?.copyWith(
         fontSize: 20,
         fontWeight: FontWeight.w600,
         letterSpacing: 0,
@@ -63,14 +78,14 @@ class OrbitTypography {
       ),
 
       // Title — task titles, card headings
-      titleLarge: base.titleLarge?.copyWith(
+      titleLarge: serifHeadings.titleLarge?.copyWith(
         fontSize: 18,
         fontWeight: FontWeight.w600,
         letterSpacing: 0,
         color: onSurface,
         height: 1.44,
       ),
-      titleMedium: base.titleMedium?.copyWith(
+      titleMedium: serifHeadings.titleMedium?.copyWith(
         fontSize: 16,
         fontWeight: FontWeight.w600,
         letterSpacing: 0.15,

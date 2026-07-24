@@ -3,11 +3,12 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 
 import '../../core/constants/app_constants.dart';
+import '../../features/settings/application/preferences_provider.dart';
 import '../../features/tasks/application/tasks_provider.dart';
 
 /// App shell widget hosting the bottom navigation bar and the
-/// indexed navigation stack. Adapts to phone (bottom nav) and
-/// tablet/desktop (navigation rail) layouts.
+/// indexed navigation stack. Handles PRD Section 7 Back Navigation contract:
+/// Returns to configured home destination before allowing Android system exit.
 class AppShell extends ConsumerWidget {
   const AppShell({super.key, required this.navigationShell});
 
@@ -15,14 +16,26 @@ class AppShell extends ConsumerWidget {
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
+    final prefs = ref.watch(preferencesNotifierProvider);
+    final homeIndex = prefs.defaultLandingPage.clamp(0, 3);
+    final isAtHome = navigationShell.currentIndex == homeIndex;
     final width = MediaQuery.of(context).size.width;
     final isWide = width >= AppConstants.breakpointMedium;
 
-    if (isWide) {
-      return _WideLayout(navigationShell: navigationShell);
-    } else {
-      return _NarrowLayout(navigationShell: navigationShell);
-    }
+    return PopScope(
+      canPop: isAtHome,
+      onPopInvokedWithResult: (didPop, result) {
+        if (!didPop && !isAtHome) {
+          navigationShell.goBranch(
+            homeIndex,
+            initialLocation: true,
+          );
+        }
+      },
+      child: isWide
+          ? _WideLayout(navigationShell: navigationShell)
+          : _NarrowLayout(navigationShell: navigationShell),
+    );
   }
 }
 
@@ -37,7 +50,6 @@ class _NarrowLayout extends ConsumerWidget {
   @override
   Widget build(BuildContext context, WidgetRef ref) {
     final todayCountAsync = ref.watch(todayTaskCountProvider);
-    final colorScheme = Theme.of(context).colorScheme;
 
     return Scaffold(
       body: navigationShell,
@@ -95,8 +107,6 @@ class _WideLayout extends ConsumerWidget {
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
-    final colorScheme = Theme.of(context).colorScheme;
-
     return Scaffold(
       body: Row(
         children: [

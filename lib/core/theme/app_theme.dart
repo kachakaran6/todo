@@ -1,25 +1,26 @@
 import 'package:flutter/material.dart';
 import 'color_tokens.dart';
+import 'font_tokens.dart';
 import 'typography.dart';
 import '../constants/app_constants.dart';
 
 /// Orbit Todo Design System — ThemeData Builder
 ///
 /// Builds complete Material 3 ThemeData for any combination of
-/// [AccentTheme] and [Brightness]. Uses custom color tokens, Inter
-/// typography, and hand-tuned component themes.
+/// [AccentTheme], [AppFontStyle], and [Brightness].
 class OrbitTheme {
   OrbitTheme._();
 
   static ThemeData build({
     required AccentTheme accent,
     required Brightness brightness,
+    AppFontStyle fontStyle = AppFontStyle.modern,
   }) {
     final colorScheme = brightness == Brightness.light
         ? OrbitColorTokens.lightScheme(accent)
         : OrbitColorTokens.darkScheme(accent);
 
-    final textTheme = OrbitTypography.buildTextTheme(colorScheme);
+    final textTheme = OrbitTypography.buildTextTheme(colorScheme, fontStyle);
 
     return ThemeData(
       useMaterial3: true,

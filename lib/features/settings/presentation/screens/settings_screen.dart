@@ -4,10 +4,11 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import 'package:orbit_todo/core/constants/app_constants.dart';
 import 'package:orbit_todo/core/theme/color_tokens.dart';
+import 'package:orbit_todo/core/theme/font_tokens.dart';
 import 'package:orbit_todo/features/settings/application/preferences_provider.dart';
 import 'package:orbit_todo/features/settings/domain/user_preferences.dart';
 
-/// Settings screen — theme, accent, density, and preferences.
+/// Settings screen — theme, accent, font style, landing page, density, and preferences.
 class SettingsScreen extends ConsumerWidget {
   const SettingsScreen({super.key});
 
@@ -16,7 +17,6 @@ class SettingsScreen extends ConsumerWidget {
     final prefs = ref.watch(preferencesNotifierProvider);
     final notifier = ref.read(preferencesNotifierProvider.notifier);
     final theme = Theme.of(context);
-    final colorScheme = theme.colorScheme;
 
     return Scaffold(
       appBar: AppBar(title: const Text('Settings')),
@@ -24,10 +24,9 @@ class SettingsScreen extends ConsumerWidget {
         padding: const EdgeInsets.symmetric(vertical: AppConstants.space2),
         children: [
           // ── Appearance ──────────────────────────────────────────────────
-          // ── Appearance ──────────────────────────────────────────────────
           const _SectionHeader(label: 'Appearance'),
 
-          // Inline Theme Mode Selector
+          // Theme Mode Selector
           Padding(
             padding: const EdgeInsets.symmetric(
               horizontal: AppConstants.space4,
@@ -73,7 +72,7 @@ class SettingsScreen extends ConsumerWidget {
 
           const SizedBox(height: AppConstants.space3),
 
-          // Inline Accent Color Swatches
+          // Accent Color Swatches
           Padding(
             padding: const EdgeInsets.symmetric(
               horizontal: AppConstants.space4,
@@ -158,6 +157,105 @@ class SettingsScreen extends ConsumerWidget {
             ),
           ),
 
+          const SizedBox(height: AppConstants.space3),
+
+          // Font Style Selector (PRD Requirement 9)
+          Padding(
+            padding: const EdgeInsets.symmetric(
+              horizontal: AppConstants.space4,
+              vertical: AppConstants.space2,
+            ),
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text(
+                  'Font Style',
+                  style: theme.textTheme.titleSmall?.copyWith(
+                    fontWeight: FontWeight.w600,
+                  ),
+                ),
+                const SizedBox(height: AppConstants.space1),
+                Text(
+                  'Choose your preferred typography personality',
+                  style: theme.textTheme.bodySmall?.copyWith(
+                    color: theme.colorScheme.onSurfaceVariant,
+                  ),
+                ),
+                const SizedBox(height: AppConstants.space3),
+                SingleChildScrollView(
+                  scrollDirection: Axis.horizontal,
+                  physics: const BouncingScrollPhysics(),
+                  child: Row(
+                    children: AppFontStyle.values.map((font) {
+                      final isSelected = prefs.fontStyle == font;
+                      return Padding(
+                        padding: const EdgeInsets.only(right: AppConstants.space2),
+                        child: InkWell(
+                          onTap: () => notifier.setFontStyle(font),
+                          borderRadius: BorderRadius.circular(AppConstants.radiusMD),
+                          child: AnimatedContainer(
+                            duration: 200.ms,
+                            width: 140,
+                            padding: const EdgeInsets.all(AppConstants.space3),
+                            decoration: BoxDecoration(
+                              color: isSelected
+                                  ? theme.colorScheme.primaryContainer
+                                  : theme.colorScheme.surfaceContainerHighest.withValues(alpha: 0.4),
+                              borderRadius: BorderRadius.circular(AppConstants.radiusMD),
+                              border: Border.all(
+                                color: isSelected
+                                    ? theme.colorScheme.primary
+                                    : Colors.transparent,
+                                width: 2,
+                              ),
+                            ),
+                            child: Column(
+                              crossAxisAlignment: CrossAxisAlignment.start,
+                              children: [
+                                Row(
+                                  mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                                  children: [
+                                    Text(
+                                      font.displayName,
+                                      style: theme.textTheme.titleSmall?.copyWith(
+                                        fontWeight: FontWeight.w700,
+                                        color: isSelected
+                                            ? theme.colorScheme.primary
+                                            : theme.colorScheme.onSurface,
+                                      ),
+                                    ),
+                                    if (isSelected)
+                                      Icon(
+                                        Icons.check_circle_rounded,
+                                        size: 16,
+                                        color: theme.colorScheme.primary,
+                                      ),
+                                  ],
+                                ),
+                                const SizedBox(height: AppConstants.space1),
+                                Text(
+                                  font.description,
+                                  maxLines: 2,
+                                  overflow: TextOverflow.ellipsis,
+                                  style: theme.textTheme.labelSmall?.copyWith(
+                                    fontSize: 10,
+                                    color: isSelected
+                                        ? theme.colorScheme.primary
+                                        : theme.colorScheme.onSurfaceVariant,
+                                  ),
+                                ),
+                              ],
+                            ),
+                          ),
+                        ),
+                      );
+                    }).toList(),
+                  ),
+                ),
+              ],
+            ),
+          ),
+
           const SizedBox(height: AppConstants.space2),
 
           // Task density
@@ -169,10 +267,19 @@ class SettingsScreen extends ConsumerWidget {
             trailing: const Icon(Icons.chevron_right_rounded, size: 20),
           ),
 
+          // Default Home Destination (PRD Requirement 6 & 7)
+          ListTile(
+            leading: const Icon(Icons.home_outlined),
+            title: const Text('Default Home Screen'),
+            subtitle: Text(_landingPageLabel(prefs.defaultLandingPage)),
+            onTap: () => _showLandingPagePicker(context, prefs.defaultLandingPage, notifier),
+            trailing: const Icon(Icons.chevron_right_rounded, size: 20),
+          ),
+
           const Divider(height: AppConstants.space6),
 
           // ── Tasks ────────────────────────────────────────────────────────
-          _SectionHeader(label: 'Tasks'),
+          const _SectionHeader(label: 'Tasks'),
 
           SwitchListTile(
             secondary: const Icon(Icons.check_circle_outline_rounded),
@@ -185,20 +292,18 @@ class SettingsScreen extends ConsumerWidget {
           const Divider(height: AppConstants.space6),
 
           // ── About ────────────────────────────────────────────────────────
-          _SectionHeader(label: 'About'),
+          const _SectionHeader(label: 'About'),
 
-          ListTile(
-            leading: const Icon(Icons.info_outline_rounded),
-            title: const Text('Orbit Todo'),
-            subtitle: const Text('Version 1.0.0'),
+          const ListTile(
+            leading: Icon(Icons.info_outline_rounded),
+            title: Text('Orbit Todo'),
+            subtitle: Text('Version 1.0.0'),
           ),
 
           ListTile(
             leading: const Icon(Icons.star_outline_rounded),
             title: const Text('Rate the app'),
-            onTap: () {
-              // TODO: In-app review
-            },
+            onTap: () {},
           ),
 
           const SizedBox(height: AppConstants.space8),
@@ -207,7 +312,58 @@ class SettingsScreen extends ConsumerWidget {
     );
   }
 
+  String _landingPageLabel(int index) => switch (index) {
+        0 => 'Inbox',
+        1 => 'Today (Default)',
+        2 => 'Projects',
+        3 => 'All Tasks',
+        _ => 'Today',
+      };
 
+  void _showLandingPagePicker(
+    BuildContext context,
+    int current,
+    PreferencesNotifier notifier,
+  ) {
+    showModalBottomSheet<void>(
+      context: context,
+      builder: (ctx) => Padding(
+        padding: const EdgeInsets.all(AppConstants.space4),
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Text('Default Home Screen', style: Theme.of(ctx).textTheme.titleMedium),
+            const SizedBox(height: AppConstants.space2),
+            Text(
+              'Pressing Back on non-home screens returns here first.',
+              style: Theme.of(ctx).textTheme.bodySmall?.copyWith(
+                    color: Theme.of(ctx).colorScheme.onSurfaceVariant,
+                  ),
+            ),
+            const SizedBox(height: AppConstants.space4),
+            ...[0, 1, 2, 3].map(
+              (idx) => ListTile(
+                title: Text(_landingPageLabel(idx)),
+                trailing: current == idx
+                    ? Icon(Icons.check_rounded,
+                        color: Theme.of(ctx).colorScheme.primary)
+                    : null,
+                onTap: () {
+                  notifier.setDefaultLandingPage(idx);
+                  Navigator.pop(ctx);
+                },
+                shape: RoundedRectangleBorder(
+                  borderRadius: BorderRadius.circular(AppConstants.radiusMD),
+                ),
+              ),
+            ),
+            SizedBox(height: MediaQuery.of(context).padding.bottom),
+          ],
+        ),
+      ),
+    );
+  }
 
   void _showDensityPicker(
     BuildContext context,
@@ -254,10 +410,6 @@ class SettingsScreen extends ConsumerWidget {
     );
   }
 }
-
-// ──────────────────────────────────────────────────────────────────────────
-// Section header
-// ──────────────────────────────────────────────────────────────────────────
 
 class _ThemeSelectorCard extends StatelessWidget {
   const _ThemeSelectorCard({
@@ -319,10 +471,6 @@ class _ThemeSelectorCard extends StatelessWidget {
   }
 }
 
-// ──────────────────────────────────────────────────────────────────────────
-// Section header
-// ──────────────────────────────────────────────────────────────────────────
-
 class _SectionHeader extends StatelessWidget {
   const _SectionHeader({required this.label});
   final String label;
@@ -347,4 +495,3 @@ class _SectionHeader extends StatelessWidget {
     );
   }
 }
-

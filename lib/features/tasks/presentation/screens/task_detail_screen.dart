@@ -72,6 +72,56 @@ class _TaskDetailScreenState extends ConsumerState<TaskDetailScreen> {
     }
   }
 
+  bool _hasUnsavedEdits(TaskEntity task) {
+    if (!_isEditing) return false;
+    final titleChanged = _titleController.text.trim() != task.title;
+    final notesChanged = _notesController.text.trim() != (task.notes ?? '');
+    return titleChanged || notesChanged;
+  }
+
+  Future<bool?> _showUnsavedChangesSheet(BuildContext context) {
+    return showModalBottomSheet<bool>(
+      context: context,
+      builder: (ctx) => Padding(
+        padding: const EdgeInsets.all(AppConstants.space4),
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Text('Unsaved Changes', style: Theme.of(ctx).textTheme.titleMedium),
+            const SizedBox(height: AppConstants.space2),
+            Text(
+              'You have unsaved changes. Would you like to save them before leaving?',
+              style: Theme.of(ctx).textTheme.bodySmall?.copyWith(
+                    color: Theme.of(ctx).colorScheme.onSurfaceVariant,
+                  ),
+            ),
+            const SizedBox(height: AppConstants.space4),
+            ListTile(
+              leading: const Icon(Icons.save_outlined),
+              title: const Text('Save & Leave'),
+              onTap: () async {
+                await _saveChanges();
+                if (ctx.mounted) Navigator.pop(ctx, true);
+              },
+            ),
+            ListTile(
+              leading: const Icon(Icons.delete_outline_rounded),
+              title: const Text('Discard Changes'),
+              onTap: () => Navigator.pop(ctx, true),
+            ),
+            ListTile(
+              leading: const Icon(Icons.edit_outlined),
+              title: const Text('Keep Editing'),
+              onTap: () => Navigator.pop(ctx, false),
+            ),
+            SizedBox(height: MediaQuery.of(context).padding.bottom),
+          ],
+        ),
+      ),
+    );
+  }
+
   @override
   Widget build(BuildContext context) {
     final taskAsync = ref.watch(singleTaskProvider(widget.taskId));
@@ -88,15 +138,33 @@ class _TaskDetailScreenState extends ConsumerState<TaskDetailScreen> {
         }
         _loadTask(task);
 
-        return Scaffold(
-          appBar: AppBar(
-            leading: IconButton(
-              icon: const Icon(Icons.arrow_back_ios_new_rounded),
-              onPressed: () {
-                if (_isEditing) _saveChanges().then((_) => context.pop());
-                else context.pop();
-              },
-            ),
+        final hasEdits = _hasUnsavedEdits(task);
+
+        return PopScope(
+          canPop: !hasEdits,
+          onPopInvokedWithResult: (didPop, result) async {
+            if (!didPop && hasEdits) {
+              final shouldLeave = await _showUnsavedChangesSheet(context);
+              if (shouldLeave == true && context.mounted) {
+                context.pop();
+              }
+            }
+          },
+          child: Scaffold(
+            appBar: AppBar(
+              leading: IconButton(
+                icon: const Icon(Icons.arrow_back_ios_new_rounded),
+                onPressed: () async {
+                  if (hasEdits) {
+                    final shouldLeave = await _showUnsavedChangesSheet(context);
+                    if (shouldLeave == true && context.mounted) {
+                      context.pop();
+                    }
+                  } else {
+                    context.pop();
+                  }
+                },
+              ),
             actions: [
               if (_isEditing)
                 TextButton(
@@ -302,8 +370,9 @@ class _TaskDetailScreenState extends ConsumerState<TaskDetailScreen> {
               ],
             ),
           ),
-        );
-      },
+        ),
+      );
+    },
       loading: () => Scaffold(
         appBar: AppBar(),
         body: const Center(child: CircularProgressIndicator()),

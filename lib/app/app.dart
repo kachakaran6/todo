@@ -23,10 +23,12 @@ class OrbitTodoApp extends ConsumerWidget {
       themeMode: prefs.themeMode,
       theme: OrbitTheme.build(
         accent: prefs.accentTheme,
+        fontStyle: prefs.fontStyle,
         brightness: Brightness.light,
       ),
       darkTheme: OrbitTheme.build(
         accent: prefs.accentTheme,
+        fontStyle: prefs.fontStyle,
         brightness: Brightness.dark,
       ),
       // Global scroll behavior (more natural physics on all platforms)

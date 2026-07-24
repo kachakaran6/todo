@@ -4,6 +4,7 @@ import 'package:riverpod_annotation/riverpod_annotation.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 
 import '../../../core/theme/color_tokens.dart';
+import '../../../core/theme/font_tokens.dart';
 import '../../../core/constants/app_constants.dart';
 import '../data/preferences_repository.dart';
 import '../domain/user_preferences.dart';
@@ -42,6 +43,11 @@ class PreferencesNotifier extends _$PreferencesNotifier {
   Future<void> setAccentTheme(AccentTheme accent) async {
     await _repo.setAccentTheme(accent);
     state = state.copyWith(accentTheme: accent);
+  }
+
+  Future<void> setFontStyle(AppFontStyle style) async {
+    await _repo.setFontStyle(style);
+    state = state.copyWith(fontStyle: style);
   }
 
   Future<void> setTaskDensity(TaskDensity density) async {

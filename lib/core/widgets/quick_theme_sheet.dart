@@ -4,9 +4,10 @@ import 'package:go_router/go_router.dart';
 
 import '../constants/app_constants.dart';
 import '../theme/color_tokens.dart';
+import '../theme/font_tokens.dart';
 import '../../features/settings/application/preferences_provider.dart';
 
-/// Shows a quick 1-tap Theme Mode & Accent Color picker sheet.
+/// Shows a quick 1-tap Theme Mode, Accent Color, & Font Style picker sheet.
 void showQuickThemeSheet(BuildContext context) {
   showModalBottomSheet<void>(
     context: context,
@@ -81,7 +82,7 @@ class QuickThemeSheet extends ConsumerWidget {
                   ),
                   const SizedBox(width: AppConstants.space3),
                   Text(
-                    'Theme & Accent',
+                    'Theme & Appearance',
                     style: theme.textTheme.titleMedium?.copyWith(
                       fontWeight: FontWeight.w700,
                     ),
@@ -98,7 +99,7 @@ class QuickThemeSheet extends ConsumerWidget {
               ),
             ],
           ),
-          const SizedBox(height: AppConstants.space5),
+          const SizedBox(height: AppConstants.space4),
 
           // ── Theme Mode Options ───────────────────────────────────────────
           Text(
@@ -109,7 +110,7 @@ class QuickThemeSheet extends ConsumerWidget {
               letterSpacing: 1.1,
             ),
           ),
-          const SizedBox(height: AppConstants.space3),
+          const SizedBox(height: AppConstants.space2),
           Row(
             children: [
               _ThemeModeCard(
@@ -137,7 +138,7 @@ class QuickThemeSheet extends ConsumerWidget {
               ),
             ],
           ),
-          const SizedBox(height: AppConstants.space5),
+          const SizedBox(height: AppConstants.space4),
 
           // ── Accent Color Swatches ─────────────────────────────────────────
           Text(
@@ -148,7 +149,7 @@ class QuickThemeSheet extends ConsumerWidget {
               letterSpacing: 1.1,
             ),
           ),
-          const SizedBox(height: AppConstants.space3),
+          const SizedBox(height: AppConstants.space2),
           SingleChildScrollView(
             scrollDirection: Axis.horizontal,
             physics: const BouncingScrollPhysics(),
@@ -156,7 +157,7 @@ class QuickThemeSheet extends ConsumerWidget {
               children: AccentTheme.values.map((accent) {
                 final isSelected = prefs.accentTheme == accent;
                 return Padding(
-                  padding: const EdgeInsets.only(right: AppConstants.space3),
+                  padding: const EdgeInsets.only(right: AppConstants.space2),
                   child: InkWell(
                     onTap: () => notifier.setAccentTheme(accent),
                     borderRadius: BorderRadius.circular(16),
@@ -181,23 +182,16 @@ class QuickThemeSheet extends ConsumerWidget {
                       child: Row(
                         children: [
                           Container(
-                            width: 20,
-                            height: 20,
+                            width: 18,
+                            height: 18,
                             decoration: BoxDecoration(
                               shape: BoxShape.circle,
                               color: accent.swatch,
-                              boxShadow: [
-                                BoxShadow(
-                                  color: accent.swatch.withValues(alpha: 0.4),
-                                  blurRadius: 6,
-                                  offset: const Offset(0, 2),
-                                ),
-                              ],
                             ),
                             child: isSelected
                                 ? const Icon(
                                     Icons.check_rounded,
-                                    size: 14,
+                                    size: 12,
                                     color: Colors.white,
                                   )
                                 : null,
@@ -212,6 +206,74 @@ class QuickThemeSheet extends ConsumerWidget {
                                   : colorScheme.onSurface,
                             ),
                           ),
+                        ],
+                      ),
+                    ),
+                  ),
+                );
+              }).toList(),
+            ),
+          ),
+          const SizedBox(height: AppConstants.space4),
+
+          // ── Font Style Selector (PRD Requirement 9) ──────────────────────
+          Text(
+            'FONT STYLE',
+            style: theme.textTheme.labelSmall?.copyWith(
+              color: colorScheme.primary,
+              fontWeight: FontWeight.w700,
+              letterSpacing: 1.1,
+            ),
+          ),
+          const SizedBox(height: AppConstants.space2),
+          SingleChildScrollView(
+            scrollDirection: Axis.horizontal,
+            physics: const BouncingScrollPhysics(),
+            child: Row(
+              children: AppFontStyle.values.map((font) {
+                final isSelected = prefs.fontStyle == font;
+                return Padding(
+                  padding: const EdgeInsets.only(right: AppConstants.space2),
+                  child: InkWell(
+                    onTap: () => notifier.setFontStyle(font),
+                    borderRadius: BorderRadius.circular(AppConstants.radiusMD),
+                    child: AnimatedContainer(
+                      duration: const Duration(milliseconds: 200),
+                      padding: const EdgeInsets.symmetric(
+                        horizontal: AppConstants.space3,
+                        vertical: AppConstants.space2,
+                      ),
+                      decoration: BoxDecoration(
+                        color: isSelected
+                            ? colorScheme.primaryContainer
+                            : colorScheme.surfaceContainerHighest.withValues(alpha: 0.5),
+                        borderRadius: BorderRadius.circular(AppConstants.radiusMD),
+                        border: Border.all(
+                          color: isSelected
+                              ? colorScheme.primary
+                              : Colors.transparent,
+                          width: 2,
+                        ),
+                      ),
+                      child: Row(
+                        children: [
+                          Text(
+                            font.displayName,
+                            style: theme.textTheme.labelMedium?.copyWith(
+                              fontWeight: isSelected ? FontWeight.w700 : FontWeight.w500,
+                              color: isSelected
+                                  ? colorScheme.primary
+                                  : colorScheme.onSurface,
+                            ),
+                          ),
+                          if (isSelected) ...[
+                            const SizedBox(width: AppConstants.space1),
+                            Icon(
+                              Icons.check_rounded,
+                              size: 14,
+                              color: colorScheme.primary,
+                            ),
+                          ],
                         ],
                       ),
                     ),
