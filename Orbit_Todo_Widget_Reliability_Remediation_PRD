@@ -1,0 +1,540 @@
+# Product Requirements Document
+# Orbit Todo — Home-Screen Widget Reliability Remediation
+
+**Document type:** Engineering and product remediation PRD  
+**Product:** Orbit Todo  
+**Platforms:** Android first; iOS parity requirements included  
+**Priority:** Release blocker  
+**Status:** Ready for implementation  
+**Companion document:** `Orbit_Todo_Home_Screen_Widgets_PRD.md`
+
+---
+
+## 1. Executive summary
+
+Orbit Todo’s current home-screen widgets render visually, but at least one widget action is broken. The supplied evidence shows an Inbox widget that opens this unsupported route:
+
+```text
+orbit://inbox/
+```
+
+The app then presents a technical failure screen:
+
+```text
+Page Not Found
+GoException: no routes for location: orbit://inbox/
+```
+
+This is a release-blocking defect. A home-screen widget is part of the product, not an experimental shortcut. Every widget tap must open the intended app destination or safely fall back to the app’s home screen. It must never show a raw routing exception, developer copy, blank state, or dead-end screen.
+
+This PRD defines a safe remediation that:
+
+1. Makes every widget action functional and deterministic.
+2. Converts native widget intents and deep links into valid in-app navigation.
+3. Preserves all existing app navigation and task behavior.
+4. Adds reliable local widget data, safe refreshes, and action handling.
+5. Adds development logs and automated checks so broken widget links cannot return unnoticed.
+
+**Non-negotiable release rule:** no widget can ship if a fresh install, app update, cold start, warm start, locked device, or restored widget can expose a route error or fail to reach a meaningful screen.
+
+---
+
+## 2. Evidence and root-cause hypothesis
+
+### 2.1 Observed behavior
+
+| Area | Observation | User impact | Severity |
+|---|---|---|---|
+| Inbox widget | Widget is displayed and visually populated | Widget appears available | — |
+| Inbox action | Opens `orbit://inbox/` | The route is not registered with the Flutter router | Critical |
+| Error handling | Flutter displays `Page Not Found` and a `GoException` | User sees internal technical language and cannot proceed | Critical |
+| Recovery | A Home control is present but the failed navigation should never occur | User trust is reduced; workflow interrupted | High |
+
+### 2.2 Likely technical cause
+
+The native widget action is emitting a custom URI (`orbit://inbox/`), while the app router is configured only for application paths such as `/inbox`, `/today`, or `/task/:id`. The router is receiving the complete URI rather than a recognized normalized in-app location.
+
+Possible contributing causes:
+
+- The custom URI scheme is not declared consistently in Android/iOS app configuration.
+- The app’s incoming-link handler passes `uri.toString()` to the router instead of mapping the URI to a supported path.
+- The route is defined as `/inbox`, but the widget produces `orbit://inbox/`, where `inbox` is the URI host rather than the path.
+- Trailing slash, capitalization, query parameter, or route-name mismatch.
+- The same mapping is not applied on cold start, resume, and an already-running app.
+
+This PRD requires the implementation team to confirm the exact cause in logs before coding the final fix. The product behavior must not depend on guessing the current router configuration.
+
+---
+
+## 3. Goals and non-goals
+
+### 3.1 Goals
+
+1. **100% valid widget navigation:** Every supported widget interaction resolves to an approved route or a safe fallback.
+2. **No technical UI:** Users never see `GoException`, “Page Not Found,” raw URI strings, stack traces, or implementation error messages from a widget interaction.
+3. **No regression:** Existing in-app navigation, task CRUD, reminders, data storage, back behavior, and widget layout remain functional.
+4. **Reliable widget data:** Widgets render from a validated local snapshot and recover safely after update, restart, database migration, or unavailable data.
+5. **Action safety:** A task completion tap is idempotent; rapid duplicate taps cannot accidentally toggle or duplicate work.
+6. **Traceability:** Developers can diagnose a widget failure through structured logs without collecting task titles or private user data.
+
+### 3.2 Non-goals
+
+- Rebuilding the entire app routing architecture for stylistic reasons.
+- Adding cloud synchronization as a dependency for widgets.
+- Supporting arbitrary externally supplied deep-link paths.
+- Enabling direct free-text editing inside the launcher widget.
+- Redesigning the existing widget visual identity except where required for functionality, accessibility, or clear state handling.
+
+---
+
+## 4. Product requirements
+
+### 4.1 Approved destinations
+
+Widgets may navigate only to destinations in this allowlist.
+
+| Logical destination | Valid internal route | Optional external URI | Fallback |
+|---|---|---|---|
+| Today | `/today` | `orbit://today` | `/today` or `/` |
+| Inbox | `/inbox` | `orbit://inbox` | `/inbox` or `/` |
+| Quick Add | `/quick-add` | `orbit://quick-add` | `/quick-add` or `/` |
+| Focus | `/focus` | `orbit://focus` | `/today` or `/` |
+| Task detail | `/task/:taskId` | `orbit://task/:taskId` | parent list, then `/today` |
+| Home | `/` | `orbit://home` | `/` |
+
+**Important:** The table defines logical behavior, not a demand that both URI and internal-path formats be used everywhere. Native widgets must use one canonical action contract. The recommended contract is a small, versioned command payload rather than raw route strings.
+
+### 4.2 Canonical widget action contract
+
+A widget must not decide router URLs ad hoc. It sends a validated command to the host app.
+
+Recommended payload:
+
+```json
+{
+  "source": "home_widget",
+  "version": 1,
+  "action": "open_inbox",
+  "widgetInstanceId": "optional-instance-id",
+  "taskId": "only-for-task-actions"
+}
+```
+
+Supported action names:
+
+- `open_home`
+- `open_today`
+- `open_inbox`
+- `open_quick_add`
+- `open_focus`
+- `open_task`
+- `complete_task`
+- `refresh_widget` (internal/debug only; never visibly exposed as an error)
+
+The Flutter application owns the only mapping from action name to router destination. Native Android/iOS widget code must never hard-code a route that is not included in the shared action contract.
+
+### 4.3 URI compatibility requirement
+
+If platform tooling requires a deep link, use one canonical URI grammar and normalize it before calling the Flutter router.
+
+**Canonical URI examples**
+
+```text
+orbit://app/today
+orbit://app/inbox
+orbit://app/quick-add
+orbit://app/focus
+orbit://app/task/abc123
+```
+
+The fixed authority `app` avoids the ambiguous `orbit://inbox/` structure where `inbox` becomes a host instead of a route segment.
+
+The deep-link handler must:
+
+1. Parse the incoming URI safely.
+2. Verify scheme, authority, path, version, and optional task ID.
+3. Map only recognized values to an internal app route.
+4. Reject malformed or unknown values without crashing.
+5. Navigate to `/` (or another approved safe destination) if parsing/mapping fails.
+6. Record a sanitized diagnostic event.
+
+**Never do this:** pass raw input directly to `context.go(uri.toString())`, `router.go(uri.toString())`, or an equivalent router call.
+
+### 4.4 Universal fallback behavior
+
+For every invalid, stale, deleted, or unsupported widget action:
+
+1. Do not render an app-level error page.
+2. Open Orbit Todo’s safe destination—normally Home/Today.
+3. If possible, show a short non-technical in-app confirmation such as: **“That item is no longer available.”**
+4. Refresh the source widget in the background.
+5. Write a structured sanitized warning log.
+
+The fallback must work when:
+
+- The task referenced by the widget was deleted.
+- A previous app version created an old widget intent.
+- The app is opened cold from the launcher.
+- The app is already open on a different page.
+- The app database is being restored or migrated.
+- The incoming payload has missing/invalid fields.
+
+---
+
+## 5. Functional requirements by widget
+
+### 5.1 Inbox widget
+
+| Interaction | Required result | Fallback |
+|---|---|---|
+| Tap widget title/header | Open Inbox | Open Home/Today, never error page |
+| Tap `Open Inbox` | Open Inbox | Open Home/Today |
+| Tap task title | Open valid task detail | Open Inbox and show unavailable message if task is gone |
+| Tap task checkbox | Complete task once and refresh all widgets | Open app to task only if action cannot safely finish |
+| Tap quick add | Open focused Quick Add composer | Open Home then Quick Add, if available |
+
+### 5.2 Today widget
+
+- Header opens Today.
+- Task tap opens task detail.
+- Complete action toggles only from incomplete to complete for that action event; it must not toggle back because the event is delivered twice.
+- If there are no current tasks, render the designed empty state and keep the header action functional.
+
+### 5.3 Focus widget
+
+- Focus task opens its valid detail route.
+- Complete action marks the selected task complete exactly once.
+- If the task was deleted, open Focus or Today and refresh. Do not retain a dead task route.
+
+### 5.4 Quick Add widget
+
+- Opens the Quick Add composer with autofocus only after the app reaches a stable route.
+- If the composer cannot be opened because the app is restoring, open Home and display the normal add affordance; retrying must not crash or show a route error.
+
+---
+
+## 6. Safe implementation architecture
+
+### 6.1 Separation of responsibilities
+
+| Layer | Responsibility | Must not do |
+|---|---|---|
+| Native widget provider | Render remote widget UI; emit approved action payload; read safe snapshot | Navigate Flutter routes directly; query Flutter database per row; expose exceptions |
+| Platform bridge | Deliver a widget action and request widget refreshes | Contain product routing rules in multiple places |
+| Flutter app action coordinator | Validate payload; deduplicate action; map action to product intent | Pass untrusted raw URI directly to router |
+| Navigation adapter | Convert product intent into one known internal route | Display a technical missing-route page for widget inputs |
+| Task repository | Execute task change transactionally; emit data update | Allow duplicate completion effects |
+| Widget snapshot service | Build and atomically publish display data | Write partial/corrupt widget payloads |
+
+### 6.2 Required action flow
+
+1. User taps a widget element.
+2. Native platform sends the canonical action payload to the app/bridge.
+3. The action coordinator reads and validates it.
+4. The coordinator records `widget_action_received` and checks duplicate-event protection.
+5. For data actions, the task repository performs one local transaction.
+6. The snapshot service writes a complete next widget snapshot atomically.
+7. All affected widget instances are refreshed.
+8. For navigation actions, the navigation adapter selects the allowlisted route.
+9. The app opens the route only after the root navigator/router is ready.
+10. If any nonfatal step fails, use the specified safe fallback and log it; no exception may reach the user interface.
+
+### 6.3 App start and resume handling
+
+The same action resolver must be called in all three entry modes:
+
+- **Cold start:** app was not running.
+- **Warm start/resume:** app exists in background or is returning from another screen.
+- **Foreground action:** app is already visible and receives an action.
+
+Do not write separate URI parsing behavior for each mode. A single service must process the payload and return a product intent.
+
+### 6.4 Router hardening
+
+Implement a top-level unknown-route safeguard for all navigation sources, while retaining normal in-app behavior.
+
+Requirements:
+
+- Widget-originated unknown destinations must redirect to Home/Today.
+- The redirect must be loop-safe and complete within one navigation attempt.
+- The user-facing fallback screen must use normal product UI, not a developer “Page Not Found” screen.
+- Existing valid routes and back-stack behavior must remain unchanged.
+- Diagnostic route information must be available only in development logs, never in released UI.
+
+---
+
+## 7. Data and refresh reliability
+
+### 7.1 Local snapshot requirement
+
+Widgets must read a compact, versioned local snapshot rather than directly depending on a live Flutter database connection at render time.
+
+The snapshot includes only fields required for display and actions:
+
+- schema version
+- generated timestamp
+- widget instance configuration key
+- task ID
+- sanitized display title
+- due/status flags
+- completion state
+- ordering index
+- optional accent/theme token
+
+Do not store raw exception details, private notes, attachments, authentication data, or any unrelated task fields in widget storage.
+
+### 7.2 Atomic write rule
+
+A widget update must be all-or-nothing:
+
+1. Build and validate the full new snapshot in memory.
+2. Write it to a temporary/versioned key or file.
+3. Mark it current only after validation succeeds.
+4. Notify the native widget provider to refresh.
+
+If snapshot creation fails, retain the most recent valid snapshot. Do not replace working content with blank content, JSON fragments, placeholder text, or an error.
+
+### 7.3 Refresh triggers
+
+Refresh all relevant widget instances after:
+
+- task add, edit, complete, reopen, delete, archive, restore
+- task due-date/time or recurrence change
+- list/project or focus assignment change
+- selected accent/theme or widget configuration change
+- application startup after local database ready
+- migration completion
+- timezone/date rollover
+- explicit user widget refresh, where platform supports it
+- package upgrade/reinstall recovery
+
+Refresh work must be debounced for burst changes, but the final display must reflect the last successful local transaction.
+
+### 7.4 Loading, unavailable, and empty states
+
+| Condition | What user sees | Available action |
+|---|---|---|
+| First render; no snapshot yet | Branded, compact “Getting your tasks ready” state for a short time only | Tap opens Home/Today |
+| No matching tasks | Intentional empty state, e.g. “Inbox is clear” | Open Inbox / Add task |
+| Data migration in progress | Last valid snapshot; otherwise calm “Open Orbit to finish setup” state | Open Home |
+| Snapshot corrupted/unreadable | Last valid backup snapshot; otherwise generic empty-like recovery state | Open Home |
+| Task no longer exists | List refreshes; no dead row | Open relevant list |
+| Platform update delay | Last valid content; no spinner that remains indefinitely | Tap opens relevant destination |
+
+No state may contain “error,” an exception class, URI, stack trace, generic “Page Not Found,” or a blank content frame.
+
+---
+
+## 8. Data action safety
+
+### 8.1 Completion must be idempotent
+
+Native widget broadcasts may be replayed by a launcher or delivered twice. Each completion action requires a unique event ID and must produce at most one completion transition.
+
+Rules:
+
+- Store a short-lived processed-action record by event ID.
+- If the same event arrives again, acknowledge it without toggling task state again.
+- A completion command means **set completed = true**, not “toggle completion.”
+- A reopen action, if later supported, must be a separate explicit command.
+- After a successful completion, refresh the source and any affected widgets.
+
+### 8.2 Stale/deleted task behavior
+
+If a widget refers to a task that was removed or no longer matches its filter:
+
+- Do not throw.
+- Do not reopen/duplicate the task.
+- Record `widget_action_stale_task` with hashed/non-identifying task reference.
+- Refresh the widget.
+- For navigation, open the parent list; for a silent completion action, simply refresh.
+
+### 8.3 Concurrency and migration behavior
+
+During database migrations, restores, or app upgrades, the app must queue a widget action briefly or fall back safely. It must never execute against a partially migrated database and never create a blank or error page.
+
+---
+
+## 9. Development logging and diagnostics
+
+### 9.1 Purpose
+
+Logging must let developers identify an exact failure stage—action creation, delivery, validation, route mapping, database operation, snapshot write, or widget render—without exposing user task content or personal data.
+
+### 9.2 Required structured events
+
+| Event | Required fields |
+|---|---|
+| `widget_render_requested` | widget type, size class, instance ID hash, snapshot version |
+| `widget_render_succeeded` | widget type, duration ms, item count, used-last-good flag |
+| `widget_render_failed` | widget type, stage, error category, fallback used |
+| `widget_action_received` | action name, source, app state, event ID hash |
+| `widget_action_validated` | action name, result, rejection reason if any |
+| `widget_navigation_resolved` | action name, logical destination, internal route category |
+| `widget_navigation_fallback` | source action, reason category, safe destination |
+| `widget_task_action_succeeded` | action name, duration ms, refresh queued |
+| `widget_task_action_rejected` | action name, reason category |
+| `widget_snapshot_written` | schema version, instance count, duration ms |
+| `widget_snapshot_retained` | reason category, last-good age bucket |
+| `widget_refresh_requested` | widget types, trigger category |
+| `widget_refresh_completed` | widget types, duration ms |
+
+### 9.3 Privacy rules for logs
+
+Never log:
+
+- task title, description, notes, labels, or calendar content
+- full task ID, account ID, device identifier, or raw deep link query values
+- notification text or exact location data
+
+Use route categories, hashed short-lived identifiers where needed, counts, durations, and reason codes. Verbose logs may be enabled only in debug/developer builds and must be disabled by default in production.
+
+### 9.4 Developer debug panel
+
+Provide an internal debug-only Widget Diagnostics screen or developer menu with:
+
+- last snapshot generation time and schema version
+- number/type of installed widget instances
+- last render/refresh result per widget type
+- latest sanitized action and navigation result
+- a **Refresh all widgets** test control
+- a **Simulate cold-start widget action** control for each supported action
+- a copy/export option for sanitized diagnostics
+
+This screen must not be included or reachable in a standard production user build.
+
+---
+
+## 10. Regression protection
+
+### 10.1 Isolation requirements
+
+Widget reliability work must be isolated from unrelated working functionality.
+
+- Do not change task schema unless a migration is required and tested.
+- Do not replace the main router just to support widget links.
+- Do not alter existing normal in-app route strings or page hierarchy without a migration plan.
+- Do not move task write logic into widget UI code.
+- Gate the new widget dispatch path behind automated tests before enabling it for existing widget instances.
+- Keep a compatibility handler for widget payloads created by the immediately previous released app version.
+
+### 10.2 Safe rollout sequence
+
+1. Add logs and tests around current widget action failures.
+2. Implement the centralized action resolver without changing visual widget layouts.
+3. Add URI normalization/command mapping and unknown-route fallback.
+4. Introduce versioned, atomic snapshots and refresh handling.
+5. Test fresh install, update, and existing-widget compatibility.
+6. Enable widget actions for internal testing.
+7. Run full app regression suite.
+8. Release gradually; monitor sanitized navigation-fallback and render-failure rates.
+
+A visual redesign must be a separate change after functional reliability is proven.
+
+---
+
+## 11. Test plan and release gates
+
+### 11.1 Automated tests
+
+#### Unit tests
+
+- Each valid action payload maps to exactly one allowlisted product intent.
+- `orbit://app/inbox`, `orbit://app/today`, `orbit://app/task/<valid-id>` normalize correctly.
+- `orbit://inbox/`, malformed URIs, missing route pieces, unsupported schemes, and invalid task IDs never reach the router as raw strings.
+- Every unsupported action returns the safe Home/Today intent.
+- Completion action replay produces one state transition only.
+- Missing/deleted task returns safe fallback and schedules refresh.
+- Snapshot validation rejects incomplete/invalid data and retains the last known-good snapshot.
+
+#### Widget/integration tests
+
+- Tap each interactive region of every supported widget type.
+- Verify intended screen after cold start, warm resume, and foreground action.
+- Verify an Inbox action never exposes `Page Not Found` or `GoException`.
+- Verify add/edit/complete/delete triggers correct widget snapshot refresh.
+- Verify older payload version remains safely handled after update.
+- Verify back navigation from a widget-opened destination follows the existing app rules.
+
+### 11.2 Manual device matrix
+
+Test on at least:
+
+- a low/mid-range Android device and a recent flagship Android device
+- Android versions supported by the app, including the oldest supported version
+- at least two common launchers plus a manufacturer launcher when available
+- light and dark modes
+- all five Orbit accent colors
+- a device after reboot, a device with app force-stopped, and a device with battery optimization enabled
+- an iOS device/simulator for parity where iOS widgets are shipped
+
+### 11.3 Mandatory scenario checklist
+
+| Scenario | Expected result |
+|---|---|
+| Tap Inbox header shown in supplied screenshot | Inbox opens; no error screen |
+| Tap Inbox task after task was deleted | Inbox opens/refreshes; concise unavailable message if needed |
+| Tap task completion twice quickly | Task completes once; widget refreshes |
+| Tap widget from cold app start | Correct destination opens after initialization |
+| Tap widget while app is already open elsewhere | Correct destination replaces/navigates safely without duplicate pages |
+| Launch from an old widget after app update | Valid destination or safe Home fallback |
+| Database migration during widget tap | No crash/error page; safe queue/fallback |
+| Corrupted widget snapshot | Last-good or recovery state; app remains usable |
+| No tasks in Inbox | Purposeful “Inbox is clear” state and working Open/Add action |
+| Unknown URI/action | Home/Today opens; sanitized fallback log recorded |
+
+### 11.4 Release acceptance criteria
+
+The release is approved only when all conditions are met:
+
+- [ ] No supported widget path can produce `GoException`, `Page Not Found`, raw URI text, or a blank broken screen.
+- [ ] 100% of automated widget action tests pass.
+- [ ] All mandatory manual scenarios pass on the defined device matrix.
+- [ ] Existing app navigation and task CRUD regression suite passes.
+- [ ] Each widget action works from cold, warm, and foreground app states.
+- [ ] Widget completion is duplicate-safe.
+- [ ] Widget snapshot writes are atomic and recover to last-known-good data.
+- [ ] Sanitized logs identify route mapping and fallback reasons.
+- [ ] No sensitive task content appears in diagnostics.
+- [ ] Product/design review confirms recovery states are calm and human-readable.
+
+---
+
+## 12. Delivery plan
+
+### Phase 0 — Reproduce and instrument (1–2 days)
+
+- Reproduce the Inbox route failure from a real widget.
+- Record incoming native payload/URI in debug logs.
+- Document current Flutter route definitions and initialization sequence.
+- Add a test that fails on the current `orbit://inbox/` behavior.
+
+### Phase 1 — Navigation fix and safe fallback (2–3 days)
+
+- Add centralized widget action resolver.
+- Normalize/validate canonical URIs or move widgets to command payloads.
+- Map actions to approved internal routes.
+- Add top-level safe unknown-route behavior for widget origin.
+- Verify cold/warm/foreground navigation.
+
+### Phase 2 — Data/action hardening (2–4 days)
+
+- Add idempotent completion processing.
+- Implement versioned atomic widget snapshots and last-good fallback.
+- Refresh all affected widget instances after task mutations.
+- Add stale/deleted-task handling.
+
+### Phase 3 — Diagnostics and full QA (2–4 days)
+
+- Add required structured logs and debug diagnostics panel.
+- Complete unit, integration, and manual matrix testing.
+- Run full existing-app regression tests.
+- Release to internal testers before production rollout.
+
+---
+
+## 13. Definition of done
+
+This remediation is complete only when the Inbox widget shown in the supplied evidence opens the real Inbox screen reliably, every other widget tap follows the same safe contract, and no widget interaction can expose application internals to a user.
+
+The finished experience should feel delightfully boring in the best possible way: tap a widget, get exactly where you expected, and carry on with your day.

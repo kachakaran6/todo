@@ -4,6 +4,8 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../../core/theme/app_theme.dart';
 import '../../core/theme/color_tokens.dart';
 import '../../features/settings/application/preferences_provider.dart';
+import '../../features/tasks/application/tasks_provider.dart';
+import '../../features/widgets/application/widget_snapshot_service.dart';
 import 'routes.dart';
 
 /// Root MaterialApp for Orbit Todo.
@@ -15,6 +17,11 @@ class OrbitTodoApp extends ConsumerWidget {
   @override
   Widget build(BuildContext context, WidgetRef ref) {
     final prefs = ref.watch(preferencesNotifierProvider);
+
+    // Auto-sync home screen widgets on database changes or initial load (PRD Section 7.3)
+    ref.listen(allActiveTasksProvider, (_, __) {
+      ref.read(widgetSnapshotServiceProvider).rebuildAllSnapshots();
+    });
 
     return MaterialApp.router(
       title: 'TaskMitra',

@@ -18,7 +18,7 @@ class QuickAddWidgetProvider : AppWidgetProvider() {
             val views = RemoteViews(context.packageName, R.layout.widget_quick_add)
 
             // Direct tap-to-capture intent
-            val intent = Intent(Intent.ACTION_VIEW, Uri.parse("orbit://quick_add")).apply {
+            val intent = Intent(Intent.ACTION_VIEW, Uri.parse("orbit://app/quick-add")).apply {
                 flags = Intent.FLAG_ACTIVITY_NEW_TASK
             }
             val pendingIntent = PendingIntent.getActivity(

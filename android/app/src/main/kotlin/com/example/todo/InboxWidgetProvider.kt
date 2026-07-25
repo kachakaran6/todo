@@ -47,7 +47,7 @@ class InboxWidgetProvider : AppWidgetProvider() {
                 views.setTextViewText(R.id.item_1, "Inbox is clear.")
             }
 
-            val intent = Intent(Intent.ACTION_VIEW, Uri.parse("orbit://inbox")).apply {
+            val intent = Intent(Intent.ACTION_VIEW, Uri.parse("orbit://app/inbox")).apply {
                 flags = Intent.FLAG_ACTIVITY_NEW_TASK
             }
             val pendingIntent = PendingIntent.getActivity(

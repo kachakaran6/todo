@@ -4,8 +4,11 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 
 import 'package:orbit_todo/core/constants/app_constants.dart';
+import 'package:orbit_todo/features/pomodoro/application/pomodoro_voice_provider.dart';
+import 'package:orbit_todo/features/pomodoro/application/pomodoro_voice_service.dart';
+import 'package:orbit_todo/features/pomodoro/presentation/widgets/pomodoro_voice_settings_sheet.dart';
 
-/// Pomodoro Focus Timer with Ambient White Noise Sound Generator.
+/// Pomodoro Focus Timer with Voice Guidance and Ambient White Noise.
 class PomodoroScreen extends ConsumerStatefulWidget {
   const PomodoroScreen({super.key});
 
@@ -65,12 +68,57 @@ class _PomodoroScreenState extends ConsumerState<PomodoroScreen> {
     });
   }
 
+  void _speakEvent(String type) {
+    final voiceState = ref.read(pomodoroVoiceSettingsProvider);
+    if (!voiceState.voiceEnabled) return;
+
+    final modeName = _modes[_selectedModeIndex]['name'] as String;
+    String text = '';
+
+    switch (type) {
+      case 'start':
+        if (voiceState.announceStart) {
+          text = '$modeName started. Stay focused!';
+        }
+        break;
+      case 'pause':
+        text = 'Timer paused.';
+        break;
+      case 'halfway':
+        if (voiceState.announceHalfway) {
+          text = 'Halfway done! Keep up the great work.';
+        }
+        break;
+      case 'one_min':
+        if (voiceState.announceOneMinWarning) {
+          text = 'One minute remaining.';
+        }
+        break;
+      case 'complete':
+        if (voiceState.announceCompletion) {
+          text = '$modeName completed. Great job!';
+        }
+        break;
+    }
+
+    if (text.isNotEmpty) {
+      PomodoroVoiceService().speak(
+        text,
+        volume: voiceState.volume,
+        rate: voiceState.rate,
+        pitch: voiceState.pitch,
+      );
+    }
+  }
+
   void _toggleTimer() {
     if (_isRunning) {
       _timer?.cancel();
       setState(() => _isRunning = false);
+      _speakEvent('pause');
     } else {
       setState(() => _isRunning = true);
+      _speakEvent('start');
       _timer = Timer.periodic(const Duration(seconds: 1), (t) {
         if (_selectedModeIndex == 3) {
           // Stopwatch mode counts up
@@ -79,9 +127,16 @@ class _PomodoroScreenState extends ConsumerState<PomodoroScreen> {
           // Countdown modes
           if (_remainingSeconds > 0) {
             setState(() => _remainingSeconds--);
+            final halfwaySeconds = _totalDurationSeconds ~/ 2;
+            if (_totalDurationSeconds > 60 && _remainingSeconds == halfwaySeconds) {
+              _speakEvent('halfway');
+            } else if (_remainingSeconds == 60) {
+              _speakEvent('one_min');
+            }
           } else {
             _timer?.cancel();
             setState(() => _isRunning = false);
+            _speakEvent('complete');
             _showCompletionDialog();
           }
         }
@@ -118,6 +173,8 @@ class _PomodoroScreenState extends ConsumerState<PomodoroScreen> {
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
     final colorScheme = theme.colorScheme;
+    final voiceState = ref.watch(pomodoroVoiceSettingsProvider);
+
     final progress = _totalDurationSeconds > 0
         ? (_remainingSeconds / _totalDurationSeconds).clamp(0.0, 1.0)
         : 1.0;
@@ -129,7 +186,7 @@ class _PomodoroScreenState extends ConsumerState<PomodoroScreen> {
           children: [
             const Text('Pomodoro Focus'),
             Text(
-              'Deep Work & Ambient Sound Generator',
+              'Deep Work, Voice Guidance & Ambient Sounds',
               style: theme.textTheme.bodySmall?.copyWith(
                 color: colorScheme.onSurfaceVariant,
               ),
@@ -254,6 +311,71 @@ class _PomodoroScreenState extends ConsumerState<PomodoroScreen> {
             ),
 
             const SizedBox(height: AppConstants.space6),
+
+            // Voice Guidance Control Panel
+            Container(
+              padding: const EdgeInsets.all(AppConstants.space3),
+              decoration: BoxDecoration(
+                color: colorScheme.surfaceContainerHighest.withValues(alpha: 0.35),
+                borderRadius: BorderRadius.circular(16),
+                border: Border.all(
+                  color: voiceState.voiceEnabled
+                      ? colorScheme.primary.withValues(alpha: 0.4)
+                      : Colors.transparent,
+                ),
+              ),
+              child: Row(
+                children: [
+                  Container(
+                    padding: const EdgeInsets.all(10),
+                    decoration: BoxDecoration(
+                      color: voiceState.voiceEnabled
+                          ? colorScheme.primaryContainer
+                          : colorScheme.surfaceContainerHigh,
+                      shape: BoxShape.circle,
+                    ),
+                    child: Icon(
+                      voiceState.voiceEnabled
+                          ? Icons.record_voice_over_rounded
+                          : Icons.voice_over_off_rounded,
+                      color: voiceState.voiceEnabled
+                          ? colorScheme.onPrimaryContainer
+                          : colorScheme.onSurfaceVariant,
+                    ),
+                  ),
+                  const SizedBox(width: AppConstants.space3),
+                  Expanded(
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        Text(
+                          'Voice Guidance',
+                          style: theme.textTheme.titleSmall?.copyWith(
+                            fontWeight: FontWeight.bold,
+                          ),
+                        ),
+                        const SizedBox(height: 2),
+                        Text(
+                          voiceState.voiceEnabled
+                              ? '${voiceState.persona.label} • Active'
+                              : 'Voice Alerts Muted',
+                          style: theme.textTheme.bodySmall?.copyWith(
+                            color: colorScheme.onSurfaceVariant,
+                          ),
+                        ),
+                      ],
+                    ),
+                  ),
+                  IconButton.filledTonal(
+                    icon: const Icon(Icons.tune_rounded),
+                    tooltip: 'Voice Options',
+                    onPressed: () => PomodoroVoiceSettingsSheet.show(context),
+                  ),
+                ],
+              ),
+            ),
+
+            const SizedBox(height: AppConstants.space5),
 
             // White Noise Sound Selector
             Align(

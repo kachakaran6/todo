@@ -57,8 +57,7 @@ class WidgetSnapshotService {
   }
 
   Future<void> _buildTodaySnapshot(List<TaskEntity> allActive, DateTime now) async {
-    final todayStart = DateTime(now.year, now.month, now.day);
-    final todayEnd = todayStart.add(const Duration(days: 1));
+    final nowDate = DateTime(now.year, now.month, now.day);
 
     final todayTasks = <TaskEntity>[];
     final overdueTasks = <TaskEntity>[];
@@ -67,9 +66,12 @@ class WidgetSnapshotService {
       if (task.isCompleted) continue;
 
       if (task.dueDate != null) {
-        if (task.dueDate!.isBefore(todayStart)) {
+        final localDueDate = task.dueDate!.toLocal();
+        final taskDate = DateTime(localDueDate.year, localDueDate.month, localDueDate.day);
+
+        if (taskDate.isBefore(nowDate)) {
           overdueTasks.add(task);
-        } else if (task.dueDate!.isBefore(todayEnd)) {
+        } else if (taskDate.isAtSameMomentAs(nowDate)) {
           todayTasks.add(task);
         }
       }
@@ -213,10 +215,26 @@ class WidgetSnapshotService {
     await HomeWidget.updateWidget(name: androidProviderName);
   }
 
-  /// Action Safety Pipeline (PRD Section 9.5):
-  /// Safely completes or toggles a task from a widget tap with idempotency check.
-  Future<bool> handleWidgetTaskCompletion(String taskId) async {
+  final Set<String> _processedActionIds = {};
+
+  /// Action Safety Pipeline (PRD Section 8.1 & 9.5):
+  /// Safely completes a task from a widget tap with idempotency check.
+  Future<bool> handleWidgetTaskCompletion(String taskId, {String? eventId}) async {
     final sw = Stopwatch()..start();
+    final actionKey = eventId ?? '$taskId-${DateTime.now().millisecondsSinceEpoch ~/ 2000}';
+
+    if (_processedActionIds.contains(actionKey)) {
+      _diagnostics.logEvent(
+        eventType: 'widget_action_received',
+        widgetType: 'action',
+        durationMs: sw.elapsedMilliseconds,
+        outcome: 'duplicate_ignored',
+        reasonCode: 'WIDGET_ACTION_DUPLICATE_IGNORED',
+      );
+      return true;
+    }
+    _processedActionIds.add(actionKey);
+
     try {
       final task = await _taskRepo.getTask(taskId);
       if (task == null) {
@@ -230,8 +248,10 @@ class WidgetSnapshotService {
         return false;
       }
 
-      final newStatus = !task.isCompleted;
-      await _taskRepo.toggleTaskCompleted(taskId, completed: newStatus);
+      // Explicit set completed = true for idempotency (PRD Section 8.1)
+      if (!task.isCompleted) {
+        await _taskRepo.toggleTaskCompleted(taskId, completed: true);
+      }
 
       _diagnostics.logEvent(
         eventType: 'widget_action_received',

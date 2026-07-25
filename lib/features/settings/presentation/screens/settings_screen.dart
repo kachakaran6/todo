@@ -12,6 +12,7 @@ import 'package:orbit_todo/core/theme/font_tokens.dart';
 import 'package:orbit_todo/features/settings/application/preferences_provider.dart';
 import 'package:orbit_todo/features/settings/application/data_transfer_service.dart';
 import 'package:orbit_todo/features/settings/presentation/widgets/paywall_sheet.dart';
+import 'package:orbit_todo/features/pomodoro/presentation/widgets/pomodoro_voice_settings_sheet.dart';
 
 
 /// Settings screen — theme, accent, font style, landing page, density, and preferences.
@@ -164,6 +165,19 @@ class SettingsScreen extends ConsumerWidget {
             title: const Text('Home Screen Widgets'),
             subtitle: const Text('Configure Today, Quick Add, Inbox & Focus widgets'),
             onTap: () => context.push('/settings/widgets'),
+            trailing: const Icon(Icons.chevron_right_rounded, size: 20),
+          ),
+
+          const Divider(height: AppConstants.space6),
+
+          // ── Pomodoro & Focus ──────────────────────────────────────────────
+          const _SectionHeader(label: 'Pomodoro & Focus'),
+
+          ListTile(
+            leading: const Icon(Icons.record_voice_over_rounded),
+            title: const Text('Pomodoro Voice Guidance'),
+            subtitle: const Text('Personas, milestone speech alerts, pitch & volume'),
+            onTap: () => PomodoroVoiceSettingsSheet.show(context),
             trailing: const Icon(Icons.chevron_right_rounded, size: 20),
           ),
 

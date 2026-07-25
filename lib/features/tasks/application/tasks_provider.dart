@@ -2,6 +2,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:riverpod_annotation/riverpod_annotation.dart';
 
 import '../../../data/local/database.dart';
+import '../../widgets/application/widget_snapshot_service.dart';
 import '../data/task_repository.dart';
 import '../domain/task_entity.dart';
 import '../domain/task_priority.dart';
@@ -105,6 +106,12 @@ class TaskActions extends _$TaskActions {
 
   TaskRepository get _repo => ref.read(taskRepositoryProvider);
 
+  Future<void> _rebuildWidgets() async {
+    try {
+      await ref.read(widgetSnapshotServiceProvider).rebuildAllSnapshots();
+    } catch (_) {}
+  }
+
   Future<String?> createTask({
     required String title,
     String? notes,
@@ -128,6 +135,7 @@ class TaskActions extends _$TaskActions {
         estimatedMinutes: estimatedMinutes,
       );
       state = const AsyncData(null);
+      await _rebuildWidgets();
       return id;
     } catch (e, st) {
       state = AsyncError(e, st);
@@ -137,22 +145,27 @@ class TaskActions extends _$TaskActions {
 
   Future<void> toggleCompleted(String id, {required bool completed}) async {
     await _repo.toggleTaskCompleted(id, completed: completed);
+    await _rebuildWidgets();
   }
 
   Future<void> archiveTask(String id) async {
     await _repo.archiveTask(id);
+    await _rebuildWidgets();
   }
 
   Future<void> restoreTask(String id) async {
     await _repo.restoreTask(id);
+    await _rebuildWidgets();
   }
 
   Future<void> softDeleteTask(String id) async {
     await _repo.softDeleteTask(id);
+    await _rebuildWidgets();
   }
 
   Future<void> permanentlyDeleteTask(String id) async {
     await _repo.permanentlyDeleteTask(id);
+    await _rebuildWidgets();
   }
 
   Future<void> updateTask({
@@ -181,5 +194,6 @@ class TaskActions extends _$TaskActions {
       clearProject: clearProject,
       estimatedMinutes: estimatedMinutes,
     );
+    await _rebuildWidgets();
   }
 }

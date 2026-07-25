@@ -41,7 +41,7 @@ class FocusWidgetProvider : AppWidgetProvider() {
                 views.setTextViewText(R.id.widget_focus_title, "Choose one thing to focus on.")
             }
 
-            val intent = Intent(Intent.ACTION_VIEW, Uri.parse("orbit://today")).apply {
+            val intent = Intent(Intent.ACTION_VIEW, Uri.parse("orbit://app/focus")).apply {
                 flags = Intent.FLAG_ACTIVITY_NEW_TASK
             }
             val pendingIntent = PendingIntent.getActivity(

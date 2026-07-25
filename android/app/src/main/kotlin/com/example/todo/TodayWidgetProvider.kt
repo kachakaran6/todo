@@ -45,7 +45,7 @@ class TodayWidgetProvider : AppWidgetProvider() {
             }
 
             // Launch app intent
-            val intent = Intent(Intent.ACTION_VIEW, Uri.parse("orbit://today")).apply {
+            val intent = Intent(Intent.ACTION_VIEW, Uri.parse("orbit://app/today")).apply {
                 flags = Intent.FLAG_ACTIVITY_NEW_TASK
             }
             val pendingIntent = PendingIntent.getActivity(

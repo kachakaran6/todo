@@ -2,7 +2,7 @@ name: orbit_todo
 description: "TaskMitra — A production-quality, offline-first to-do app. Simple by default. Deep by choice."
 publish_to: 'none'
 
-version: 1.0.0+2
+version: 1.0.0+3
 
 environment:
   sdk: ^3.11.5
@@ -44,6 +44,7 @@ dependencies:
   crypto: ^3.0.6
   in_app_update: ^4.2.3
   in_app_review: ^2.0.9
+  flutter_tts: ^4.2.1
 
 dev_dependencies:
   flutter_test:
