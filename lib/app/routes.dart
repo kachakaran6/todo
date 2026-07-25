@@ -1,4 +1,3 @@
-import 'package:flutter/material.dart';
 import 'package:go_router/go_router.dart';
 
 import '../../features/inbox/presentation/screens/inbox_screen.dart';
@@ -12,6 +11,8 @@ import '../../features/completed/presentation/screens/completed_screen.dart';
 import '../../features/tasks/presentation/screens/task_detail_screen.dart';
 import '../../features/settings/presentation/screens/settings_screen.dart';
 import '../../features/onboarding/presentation/screens/onboarding_screen.dart';
+import '../../features/widgets/presentation/screens/widget_configuration_screen.dart';
+import '../../features/widgets/presentation/screens/widget_diagnostics_screen.dart';
 import 'shell.dart';
 
 /// All GoRouter route definitions for Orbit Todo.
@@ -116,6 +117,18 @@ final router = GoRouter(
       path: '/settings',
       name: 'settings',
       builder: (context, state) => const SettingsScreen(),
+    ),
+
+    GoRoute(
+      path: '/settings/widgets',
+      name: 'widget_configuration',
+      builder: (context, state) => const WidgetConfigurationScreen(),
+    ),
+
+    GoRoute(
+      path: '/settings/widget-diagnostics',
+      name: 'widget_diagnostics',
+      builder: (context, state) => const WidgetDiagnosticsScreen(),
     ),
 
     GoRoute(

@@ -1,14 +1,16 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_animate/flutter_animate.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:go_router/go_router.dart';
 
 import 'package:orbit_todo/core/constants/app_constants.dart';
+import 'package:orbit_todo/core/services/play_store_service.dart';
 import 'package:orbit_todo/core/theme/color_tokens.dart';
 import 'package:orbit_todo/core/theme/font_tokens.dart';
 import 'package:orbit_todo/features/settings/application/preferences_provider.dart';
 import 'package:orbit_todo/features/settings/application/data_transfer_service.dart';
 import 'package:orbit_todo/features/settings/presentation/widgets/paywall_sheet.dart';
-import 'package:orbit_todo/features/settings/domain/user_preferences.dart';
+
 
 /// Settings screen — theme, accent, font style, landing page, density, and preferences.
 class SettingsScreen extends ConsumerWidget {
@@ -278,6 +280,15 @@ class SettingsScreen extends ConsumerWidget {
             trailing: const Icon(Icons.chevron_right_rounded, size: 20),
           ),
 
+          // Home Screen Widgets Configuration & Preview (PRD Requirement)
+          ListTile(
+            leading: const Icon(Icons.widgets_outlined),
+            title: const Text('Home Screen Widgets'),
+            subtitle: const Text('Configure Today, Quick Add, Inbox & Focus widgets'),
+            onTap: () => context.push('/settings/widgets'),
+            trailing: const Icon(Icons.chevron_right_rounded, size: 20),
+          ),
+
           const Divider(height: AppConstants.space6),
 
           // ── Tasks ────────────────────────────────────────────────────────
@@ -365,15 +376,29 @@ class SettingsScreen extends ConsumerWidget {
 
           const ListTile(
             leading: Icon(Icons.info_outline_rounded),
-            title: Text('Orbit Todo'),
+            title: Text('TaskMitra'),
             subtitle: Text('Version 1.0.0 (Expansion Ready)'),
           ),
 
           ListTile(
-            leading: const Icon(Icons.star_outline_rounded),
-            title: const Text('Rate the app'),
-            onTap: () {},
+            leading: const Icon(Icons.system_update_rounded),
+            title: const Text('Check for updates'),
+            subtitle: const Text('Fetch latest Play Store version'),
+            onTap: () {
+              ScaffoldMessenger.of(context).showSnackBar(
+                const SnackBar(content: Text('Checking Google Play for updates...')),
+              );
+              PlayStoreService.checkForUpdate(forceImmediate: true);
+            },
           ),
+
+          ListTile(
+            leading: const Icon(Icons.star_outline_rounded),
+            title: const Text('Rate app on Play Store'),
+            subtitle: const Text('Leave a review or rating'),
+            onTap: () => PlayStoreService.requestReview(),
+          ),
+
 
           const SizedBox(height: AppConstants.space8),
         ],

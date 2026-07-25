@@ -87,7 +87,7 @@ class PaywallSheet extends StatelessWidget {
           ),
           const SizedBox(height: AppConstants.space2),
           Text(
-            'No subscriptions, no hidden paywalls. Enjoy the full power of Orbit Todo completely free.',
+            'No subscriptions, no hidden paywalls. Enjoy the full power of TaskMitra completely free.',
             style: theme.textTheme.bodyMedium?.copyWith(
               color: colorScheme.onSurfaceVariant,
             ),

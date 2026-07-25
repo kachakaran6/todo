@@ -139,7 +139,7 @@ class _StepWelcome extends StatelessWidget {
         ),
         SizedBox(height: AppConstants.space5),
         Text(
-          'Orbit Todo',
+          'TaskMitra',
           style: theme.textTheme.headlineLarge?.copyWith(
             fontWeight: FontWeight.w800,
           ),

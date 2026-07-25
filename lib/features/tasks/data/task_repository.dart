@@ -49,6 +49,11 @@ class TaskRepository {
     return _enrichTask(task);
   }
 
+  Future<List<TaskEntity>> getAllActiveTasks() async {
+    final rawTasks = await _db.tasksDao.getAllActiveTasks();
+    return _enrichTasks(rawTasks);
+  }
+
   Future<List<TaskEntity>> searchTasks(String query) async {
     final rawTasks = await _db.tasksDao.searchTasks(query);
     return _enrichTasks(rawTasks);

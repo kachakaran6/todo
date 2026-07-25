@@ -17,7 +17,7 @@ class OrbitTodoApp extends ConsumerWidget {
     final prefs = ref.watch(preferencesNotifierProvider);
 
     return MaterialApp.router(
-      title: 'Orbit Todo',
+      title: 'TaskMitra',
       debugShowCheckedModeBanner: false,
       routerConfig: router,
       themeMode: prefs.themeMode,

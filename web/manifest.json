@@ -1,6 +1,6 @@
 {
-    "name": "todo",
-    "short_name": "todo",
+    "name": "TaskMitra",
+    "short_name": "TaskMitra",
     "start_url": ".",
     "display": "standalone",
     "background_color": "#121212",

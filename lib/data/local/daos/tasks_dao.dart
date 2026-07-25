@@ -95,6 +95,23 @@ class TasksDao extends DatabaseAccessor<AppDatabase> with _$TasksDaoMixin {
         .watch();
   }
 
+  /// One-shot fetch of all active tasks.
+  Future<List<Task>> getAllActiveTasks() {
+    return (select(tasks)
+          ..where(
+            (t) =>
+                t.isArchived.equals(false) &
+                t.isDeleted.equals(false),
+          )
+          ..orderBy([
+            (t) => OrderingTerm.asc(t.isCompleted),
+            (t) => OrderingTerm.desc(t.priority),
+            (t) => OrderingTerm.asc(t.dueDate),
+            (t) => OrderingTerm.asc(t.createdAt),
+          ]))
+        .get();
+  }
+
   // ──────────────────────────────────────────────────────────────────────────
   // Project tasks
   // ──────────────────────────────────────────────────────────────────────────

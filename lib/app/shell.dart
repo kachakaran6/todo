@@ -3,20 +3,35 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 
 import '../../core/constants/app_constants.dart';
+import '../../core/services/play_store_service.dart';
 import '../../features/settings/application/preferences_provider.dart';
 import '../../features/tasks/application/tasks_provider.dart';
 
 /// App shell widget hosting the bottom navigation bar and navigation rail.
-class AppShell extends ConsumerWidget {
+class AppShell extends ConsumerStatefulWidget {
   const AppShell({super.key, required this.navigationShell});
 
   final StatefulNavigationShell navigationShell;
 
   @override
-  Widget build(BuildContext context, WidgetRef ref) {
+  ConsumerState<AppShell> createState() => _AppShellState();
+}
+
+class _AppShellState extends ConsumerState<AppShell> {
+  @override
+  void initState() {
+    super.initState();
+    // Auto-check for Play Store native bottom sheet update on app load
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      PlayStoreService.checkForUpdate();
+    });
+  }
+
+  @override
+  Widget build(BuildContext context) {
     final prefs = ref.watch(preferencesNotifierProvider);
     final homeIndex = prefs.defaultLandingPage.clamp(0, 4);
-    final isAtHome = navigationShell.currentIndex == homeIndex;
+    final isAtHome = widget.navigationShell.currentIndex == homeIndex;
     final width = MediaQuery.of(context).size.width;
     final isWide = width >= AppConstants.breakpointMedium;
 
@@ -24,18 +39,19 @@ class AppShell extends ConsumerWidget {
       canPop: isAtHome,
       onPopInvokedWithResult: (didPop, result) {
         if (!didPop && !isAtHome) {
-          navigationShell.goBranch(
+          widget.navigationShell.goBranch(
             homeIndex,
             initialLocation: true,
           );
         }
       },
       child: isWide
-          ? _WideLayout(navigationShell: navigationShell)
-          : _NarrowLayout(navigationShell: navigationShell),
+          ? _WideLayout(navigationShell: widget.navigationShell)
+          : _NarrowLayout(navigationShell: widget.navigationShell),
     );
   }
 }
+
 
 // ──────────────────────────────────────────────────────────────────────────
 // Phone layout — bottom navigation bar with 5 core productivity branches
@@ -74,7 +90,7 @@ class _NarrowLayout extends ConsumerWidget {
                     )
                   : const Icon(Icons.wb_sunny_outlined),
               loading: () => const Icon(Icons.wb_sunny_outlined),
-              error: (_, __) => const Icon(Icons.wb_sunny_outlined),
+              error: (_, _) => const Icon(Icons.wb_sunny_outlined),
             ),
             selectedIcon: const Icon(Icons.wb_sunny_rounded),
             label: 'Today',
