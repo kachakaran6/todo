@@ -43,15 +43,10 @@ class InboxScreen extends ConsumerWidget {
         loading: () => const _TaskListSkeleton(),
         error: (err, _) => _ErrorState(message: err.toString()),
       ),
-      floatingActionButton: FloatingActionButton.extended(
-        onPressed: () => showQuickAdd(context),
-        icon: const Icon(Icons.add_rounded),
-        label: const Text('Add task'),
-        heroTag: 'inbox_fab',
-      ),
     );
   }
 }
+
 
 class _InboxContent extends ConsumerWidget {
   const _InboxContent({required this.tasks});

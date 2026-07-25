@@ -44,11 +44,17 @@ class _MatrixScreenState extends ConsumerState<MatrixScreen> {
         ),
         actions: [
           IconButton(
+            icon: const Icon(Icons.timer_outlined),
+            tooltip: 'Pomodoro Focus Timer',
+            onPressed: () => context.push('/pomodoro'),
+          ),
+          IconButton(
             icon: const Icon(Icons.settings_outlined),
             tooltip: 'Settings',
             onPressed: () => context.push('/settings'),
           ),
         ],
+
       ),
       body: tasksAsync.when(
         data: (tasks) {

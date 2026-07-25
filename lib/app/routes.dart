@@ -20,7 +20,7 @@ final router = GoRouter(
   initialLocation: '/inbox',
   debugLogDiagnostics: false,
   routes: [
-    // Main shell with persistent navigation
+    // Main shell with persistent navigation (4 branches + center FAB)
     StatefulShellRoute.indexedStack(
       builder: (context, state, navigationShell) {
         return AppShell(navigationShell: navigationShell);
@@ -37,13 +37,13 @@ final router = GoRouter(
           ],
         ),
 
-        // Branch 1: Today
+        // Branch 1: Pomodoro Focus
         StatefulShellBranch(
           routes: [
             GoRoute(
-              path: '/today',
-              name: 'today',
-              builder: (context, state) => const TodayScreen(),
+              path: '/pomodoro',
+              name: 'pomodoro',
+              builder: (context, state) => const PomodoroScreen(),
             ),
           ],
         ),
@@ -59,18 +59,7 @@ final router = GoRouter(
           ],
         ),
 
-        // Branch 3: Pomodoro Focus
-        StatefulShellBranch(
-          routes: [
-            GoRoute(
-              path: '/pomodoro',
-              name: 'pomodoro',
-              builder: (context, state) => const PomodoroScreen(),
-            ),
-          ],
-        ),
-
-        // Branch 4: Projects
+        // Branch 3: Projects
         StatefulShellBranch(
           routes: [
             GoRoute(
@@ -84,6 +73,12 @@ final router = GoRouter(
     ),
 
     // ── Full-screen routes (push on top of shell) ────────────────────────
+
+    GoRoute(
+      path: '/today',
+      name: 'today',
+      builder: (context, state) => const TodayScreen(),
+    ),
 
     GoRoute(
       path: '/task/:id',

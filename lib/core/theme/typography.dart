@@ -20,15 +20,16 @@ class OrbitTypography {
     final onSurfaceVariant = colorScheme.onSurfaceVariant;
 
     final TextTheme base = switch (fontStyle) {
-      AppFontStyle.modern => GoogleFonts.interTextTheme(),
+      AppFontStyle.modern => GoogleFonts.plusJakartaSansTextTheme(),
       AppFontStyle.rounded => GoogleFonts.nunitoSansTextTheme(),
-      AppFontStyle.editorial => GoogleFonts.interTextTheme(),
+      AppFontStyle.editorial => GoogleFonts.plusJakartaSansTextTheme(),
       AppFontStyle.geometric => GoogleFonts.manropeTextTheme(),
       AppFontStyle.classic => Typography.material2021().englishLike,
       AppFontStyle.handwriting => GoogleFonts.caveatTextTheme(),
       AppFontStyle.display => GoogleFonts.bebasNeueTextTheme(),
       AppFontStyle.serif => GoogleFonts.loraTextTheme(),
     };
+
 
     final TextTheme headings = switch (fontStyle) {
       AppFontStyle.editorial => GoogleFonts.sourceSerif4TextTheme(),

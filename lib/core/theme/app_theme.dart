@@ -20,7 +20,9 @@ class OrbitTheme {
         ? OrbitColorTokens.lightScheme(accent)
         : OrbitColorTokens.darkScheme(accent);
 
+    final isDark = brightness == Brightness.dark;
     final textTheme = OrbitTypography.buildTextTheme(colorScheme, fontStyle);
+
 
     return ThemeData(
       useMaterial3: true,
@@ -343,17 +345,23 @@ class OrbitTheme {
       switchTheme: SwitchThemeData(
         thumbColor: WidgetStateProperty.resolveWith((states) {
           if (states.contains(WidgetState.selected)) {
-            return colorScheme.onPrimary;
+            return Colors.white;
           }
-          return colorScheme.outline;
+          return isDark ? const Color(0xFFCBD5E1) : Colors.white;
         }),
         trackColor: WidgetStateProperty.resolveWith((states) {
           if (states.contains(WidgetState.selected)) {
             return colorScheme.primary;
           }
-          return colorScheme.surfaceContainerHigh;
+          return isDark
+              ? const Color(0xFF2D323E)
+              : const Color(0xFFCBD5E1);
         }),
+        trackOutlineColor: WidgetStateProperty.all(Colors.transparent),
+        trackOutlineWidth: WidgetStateProperty.all(0.0),
+        overlayColor: WidgetStateProperty.all(colorScheme.primary.withValues(alpha: 0.15)),
       ),
+
 
       // ──────────────────────────────────────────────────────────────────────
       // Popup Menu

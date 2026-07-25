@@ -101,42 +101,23 @@ class QuickThemeSheet extends ConsumerWidget {
           ),
           const SizedBox(height: AppConstants.space4),
 
-          // ── Theme Mode Options ───────────────────────────────────────────
-          Text(
-            'APPEARANCE MODE',
-            style: theme.textTheme.labelSmall?.copyWith(
+          // ── Theme Mode Switch Toggle (Dark Mode) ─────────────────────────
+          SwitchListTile(
+            contentPadding: EdgeInsets.zero,
+            secondary: Icon(
+              prefs.themeMode == ThemeMode.dark
+                  ? Icons.dark_mode_rounded
+                  : Icons.light_mode_rounded,
               color: colorScheme.primary,
-              fontWeight: FontWeight.w700,
-              letterSpacing: 1.1,
             ),
-          ),
-          const SizedBox(height: AppConstants.space2),
-          Row(
-            children: [
-              _ThemeModeCard(
-                mode: ThemeMode.light,
-                label: 'Light',
-                icon: Icons.light_mode_rounded,
-                isSelected: prefs.themeMode == ThemeMode.light,
-                onTap: () => notifier.setThemeMode(ThemeMode.light),
-              ),
-              const SizedBox(width: AppConstants.space2),
-              _ThemeModeCard(
-                mode: ThemeMode.dark,
-                label: 'Dark',
-                icon: Icons.dark_mode_rounded,
-                isSelected: prefs.themeMode == ThemeMode.dark,
-                onTap: () => notifier.setThemeMode(ThemeMode.dark),
-              ),
-              const SizedBox(width: AppConstants.space2),
-              _ThemeModeCard(
-                mode: ThemeMode.system,
-                label: 'System',
-                icon: Icons.brightness_auto_rounded,
-                isSelected: prefs.themeMode == ThemeMode.system,
-                onTap: () => notifier.setThemeMode(ThemeMode.system),
-              ),
-            ],
+            title: const Text('Dark Mode'),
+            subtitle: Text(
+              prefs.themeMode == ThemeMode.dark ? 'Dark theme active' : 'Light theme active',
+            ),
+            value: prefs.themeMode == ThemeMode.dark,
+            onChanged: (isDark) {
+              notifier.setThemeMode(isDark ? ThemeMode.dark : ThemeMode.light);
+            },
           ),
           const SizedBox(height: AppConstants.space4),
 
@@ -149,72 +130,59 @@ class QuickThemeSheet extends ConsumerWidget {
               letterSpacing: 1.1,
             ),
           ),
-          const SizedBox(height: AppConstants.space2),
-          SingleChildScrollView(
-            scrollDirection: Axis.horizontal,
-            physics: const BouncingScrollPhysics(),
-            child: Row(
-              children: AccentTheme.values.map((accent) {
-                final isSelected = prefs.accentTheme == accent;
-                return Padding(
-                  padding: const EdgeInsets.only(right: AppConstants.space2),
-                  child: InkWell(
-                    onTap: () => notifier.setAccentTheme(accent),
-                    borderRadius: BorderRadius.circular(16),
-                    child: AnimatedContainer(
-                      duration: const Duration(milliseconds: 200),
-                      padding: const EdgeInsets.symmetric(
-                        horizontal: AppConstants.space3,
-                        vertical: AppConstants.space2,
-                      ),
-                      decoration: BoxDecoration(
-                        color: isSelected
-                            ? accent.swatch.withValues(alpha: 0.15)
-                            : colorScheme.surfaceContainerHighest.withValues(alpha: 0.5),
-                        borderRadius: BorderRadius.circular(16),
-                        border: Border.all(
-                          color: isSelected
-                              ? accent.swatch
-                              : Colors.transparent,
-                          width: 2,
-                        ),
-                      ),
-                      child: Row(
-                        children: [
-                          Container(
-                            width: 18,
-                            height: 18,
-                            decoration: BoxDecoration(
-                              shape: BoxShape.circle,
-                              color: accent.swatch,
-                            ),
-                            child: isSelected
-                                ? const Icon(
-                                    Icons.check_rounded,
-                                    size: 12,
-                                    color: Colors.white,
-                                  )
-                                : null,
-                          ),
-                          const SizedBox(width: AppConstants.space2),
-                          Text(
-                            accent.displayName,
-                            style: theme.textTheme.labelMedium?.copyWith(
-                              fontWeight: isSelected ? FontWeight.w700 : FontWeight.w500,
-                              color: isSelected
-                                  ? accent.swatch
-                                  : colorScheme.onSurface,
-                            ),
-                          ),
-                        ],
-                      ),
+          const SizedBox(height: AppConstants.space3),
+          Row(
+            mainAxisAlignment: MainAxisAlignment.spaceEvenly,
+            children: [
+              AccentTheme.pink,
+              AccentTheme.skyBlue,
+              AccentTheme.yellow,
+              AccentTheme.orange,
+              AccentTheme.monochrome,
+            ].map((accent) {
+              final isSelected = prefs.accentTheme == accent;
+
+              return GestureDetector(
+                onTap: () {
+                  notifier.setAccentTheme(accent);
+                },
+                child: AnimatedContainer(
+                  duration: const Duration(milliseconds: 200),
+                  width: 40,
+                  height: 40,
+                  decoration: BoxDecoration(
+                    shape: BoxShape.circle,
+                    color: accent.swatch,
+                    border: Border.all(
+                      color: isSelected
+                          ? (theme.brightness == Brightness.dark ? Colors.white : Colors.black87)
+                          : Colors.transparent,
+                      width: isSelected ? 3.0 : 0.0,
                     ),
+                    boxShadow: [
+                      BoxShadow(
+                        color: accent.swatch.withValues(alpha: isSelected ? 0.5 : 0.25),
+                        blurRadius: isSelected ? 10 : 4,
+                        offset: const Offset(0, 2),
+                      ),
+                    ],
                   ),
-                );
-              }).toList(),
-            ),
+                  child: isSelected
+                      ? Icon(
+                          Icons.check_rounded,
+                          size: 20,
+                          color: ThemeData.estimateBrightnessForColor(accent.swatch) == Brightness.dark
+                              ? Colors.white
+                              : Colors.black87,
+                        )
+                      : null,
+                ),
+              );
+            }).toList(),
           ),
+
           const SizedBox(height: AppConstants.space4),
+
 
           // ── Font Style Selector (PRD Requirement 9) ──────────────────────
           Text(

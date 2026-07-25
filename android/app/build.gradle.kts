@@ -17,7 +17,7 @@ plugins {
 android {
     namespace = "com.taskmitra.application"
     compileSdk = flutter.compileSdkVersion
-    ndkVersion = "28.2.13676358"
+    ndkVersion = "27.0.12077973"
 
     compileOptions {
         sourceCompatibility = JavaVersion.VERSION_17
@@ -50,9 +50,6 @@ android {
 
     buildTypes {
         release {
-            ndk {
-                debugSymbolLevel = "NONE"
-            }
             signingConfig = if (keystorePropertiesFile.exists()) {
                 signingConfigs.getByName("release")
             } else {
@@ -65,4 +62,3 @@ android {
 flutter {
     source = "../.."
 }
-

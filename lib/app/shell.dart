@@ -1,11 +1,13 @@
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 
-import '../../core/constants/app_constants.dart';
-import '../../core/services/play_store_service.dart';
-import '../../features/settings/application/preferences_provider.dart';
-import '../../features/tasks/application/tasks_provider.dart';
+import '../core/constants/app_constants.dart';
+import '../core/services/play_store_service.dart';
+import '../core/widgets/integrated_bottom_bar.dart';
+import '../features/settings/application/preferences_provider.dart';
+import '../features/tasks/presentation/widgets/task_quick_add.dart';
 
 /// App shell widget hosting the bottom navigation bar and navigation rail.
 class AppShell extends ConsumerStatefulWidget {
@@ -18,6 +20,8 @@ class AppShell extends ConsumerStatefulWidget {
 }
 
 class _AppShellState extends ConsumerState<AppShell> {
+  DateTime? _lastPressed;
+
   @override
   void initState() {
     super.initState();
@@ -30,20 +34,44 @@ class _AppShellState extends ConsumerState<AppShell> {
   @override
   Widget build(BuildContext context) {
     final prefs = ref.watch(preferencesNotifierProvider);
-    final homeIndex = prefs.defaultLandingPage.clamp(0, 4);
-    final isAtHome = widget.navigationShell.currentIndex == homeIndex;
+    final homeIndex = prefs.defaultLandingPage.clamp(0, 3);
     final width = MediaQuery.of(context).size.width;
     final isWide = width >= AppConstants.breakpointMedium;
 
     return PopScope(
-      canPop: isAtHome,
+      canPop: false,
       onPopInvokedWithResult: (didPop, result) {
-        if (!didPop && !isAtHome) {
+        if (didPop) return;
+
+        // 1. Return to home landing page if on a secondary tab
+        if (widget.navigationShell.currentIndex != homeIndex) {
+          _lastPressed = null;
           widget.navigationShell.goBranch(
             homeIndex,
             initialLocation: true,
           );
+          return;
         }
+
+        // 2. Require double-back within 2s before exiting app
+        final now = DateTime.now();
+        if (_lastPressed == null ||
+            now.difference(_lastPressed!) > const Duration(seconds: 2)) {
+          _lastPressed = now;
+          ScaffoldMessenger.of(context).hideCurrentSnackBar();
+          ScaffoldMessenger.of(context).showSnackBar(
+            const SnackBar(
+              content: Text('Press back again to exit'),
+              duration: Duration(seconds: 2),
+              behavior: SnackBarBehavior.floating,
+              margin: EdgeInsets.only(bottom: 100, left: 24, right: 24),
+            ),
+          );
+          return;
+        }
+
+        // 3. User confirmed exit
+        SystemNavigator.pop();
       },
       child: isWide
           ? _WideLayout(navigationShell: widget.navigationShell)
@@ -52,9 +80,8 @@ class _AppShellState extends ConsumerState<AppShell> {
   }
 }
 
-
 // ──────────────────────────────────────────────────────────────────────────
-// Phone layout — bottom navigation bar with 5 core productivity branches
+// Phone layout — floating glassmorphic capsule bottom navigation bar
 // ──────────────────────────────────────────────────────────────────────────
 
 class _NarrowLayout extends ConsumerWidget {
@@ -63,54 +90,54 @@ class _NarrowLayout extends ConsumerWidget {
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
-    final todayCountAsync = ref.watch(todayTaskCountProvider);
+    final tabs = [
+      const NavTabItem(
+        selectedIcon: Icons.inbox_rounded,
+        unselectedIcon: Icons.inbox_outlined,
+        label: 'Capture',
+        branchIndex: 0,
+      ),
+      const NavTabItem(
+        selectedIcon: Icons.timer_rounded,
+        unselectedIcon: Icons.timer_outlined,
+        label: 'Pomodoro',
+        branchIndex: 1,
+      ),
+      const NavTabItem(
+        selectedIcon: Icons.add_rounded,
+        unselectedIcon: Icons.add_rounded,
+        label: '',
+        branchIndex: null,
+      ),
+      const NavTabItem(
+        selectedIcon: Icons.grid_view_rounded,
+        unselectedIcon: Icons.grid_view_outlined,
+        label: 'Matrix',
+        branchIndex: 2,
+      ),
+      const NavTabItem(
+        selectedIcon: Icons.folder_rounded,
+        unselectedIcon: Icons.folder_open_outlined,
+        label: 'Projects',
+        branchIndex: 3,
+      ),
+    ];
 
     return Scaffold(
+      extendBody: true,
       body: navigationShell,
-      bottomNavigationBar: NavigationBar(
-        selectedIndex: navigationShell.currentIndex,
-        onDestinationSelected: (index) {
+      bottomNavigationBar: IntegratedBottomBar(
+        currentIndex: navigationShell.currentIndex,
+        tabs: tabs,
+        onTap: (branchIndex) {
           navigationShell.goBranch(
-            index,
-            initialLocation: index == navigationShell.currentIndex,
+            branchIndex,
+            initialLocation: branchIndex == navigationShell.currentIndex,
           );
         },
-        destinations: [
-          const NavigationDestination(
-            icon: Icon(Icons.inbox_outlined),
-            selectedIcon: Icon(Icons.inbox_rounded),
-            label: 'Capture',
-          ),
-          NavigationDestination(
-            icon: todayCountAsync.when(
-              data: (count) => count > 0
-                  ? Badge(
-                      label: Text('$count'),
-                      child: const Icon(Icons.wb_sunny_outlined),
-                    )
-                  : const Icon(Icons.wb_sunny_outlined),
-              loading: () => const Icon(Icons.wb_sunny_outlined),
-              error: (_, _) => const Icon(Icons.wb_sunny_outlined),
-            ),
-            selectedIcon: const Icon(Icons.wb_sunny_rounded),
-            label: 'Today',
-          ),
-          const NavigationDestination(
-            icon: Icon(Icons.grid_view_outlined),
-            selectedIcon: Icon(Icons.grid_view_rounded),
-            label: 'Matrix',
-          ),
-          const NavigationDestination(
-            icon: Icon(Icons.timer_outlined),
-            selectedIcon: Icon(Icons.timer_rounded),
-            label: 'Pomodoro',
-          ),
-          const NavigationDestination(
-            icon: Icon(Icons.folder_open_outlined),
-            selectedIcon: Icon(Icons.folder_rounded),
-            label: 'Projects',
-          ),
-        ],
+        onQuickAddTap: () {
+          showQuickAdd(context);
+        },
       ),
     );
   }
@@ -137,7 +164,8 @@ class _WideLayout extends ConsumerWidget {
                 initialLocation: index == navigationShell.currentIndex,
               );
             },
-            extended: MediaQuery.of(context).size.width >= AppConstants.breakpointExpanded,
+            extended: MediaQuery.of(context).size.width >=
+                AppConstants.breakpointExpanded,
             leading: const SizedBox(height: AppConstants.space4),
             trailing: Expanded(
               child: Align(
@@ -169,19 +197,14 @@ class _WideLayout extends ConsumerWidget {
                 label: Text('Capture'),
               ),
               NavigationRailDestination(
-                icon: Icon(Icons.wb_sunny_outlined),
-                selectedIcon: Icon(Icons.wb_sunny_rounded),
-                label: Text('Today'),
+                icon: Icon(Icons.timer_outlined),
+                selectedIcon: Icon(Icons.timer_rounded),
+                label: Text('Pomodoro'),
               ),
               NavigationRailDestination(
                 icon: Icon(Icons.grid_view_outlined),
                 selectedIcon: Icon(Icons.grid_view_rounded),
                 label: Text('Matrix'),
-              ),
-              NavigationRailDestination(
-                icon: Icon(Icons.timer_outlined),
-                selectedIcon: Icon(Icons.timer_rounded),
-                label: Text('Pomodoro'),
               ),
               NavigationRailDestination(
                 icon: Icon(Icons.folder_open_outlined),

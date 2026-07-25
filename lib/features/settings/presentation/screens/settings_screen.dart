@@ -1,5 +1,7 @@
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 import 'package:flutter_animate/flutter_animate.dart';
+
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 
@@ -30,53 +32,30 @@ class SettingsScreen extends ConsumerWidget {
           // ── Appearance ──────────────────────────────────────────────────
           const _SectionHeader(label: 'Appearance'),
 
-          // Theme Mode Selector
-          Padding(
-            padding: const EdgeInsets.symmetric(
-              horizontal: AppConstants.space4,
-              vertical: AppConstants.space2,
+          // Theme Mode Switch Toggle (Light / Dark)
+          SwitchListTile(
+            secondary: Icon(
+              prefs.themeMode == ThemeMode.dark
+                  ? Icons.dark_mode_rounded
+                  : Icons.light_mode_rounded,
+              color: theme.colorScheme.primary,
             ),
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Text(
-                  'Theme Mode',
-                  style: theme.textTheme.titleSmall?.copyWith(
-                    fontWeight: FontWeight.w600,
-                  ),
-                ),
-                const SizedBox(height: AppConstants.space2),
-                Row(
-                  children: [
-                    _ThemeSelectorCard(
-                      label: 'Light',
-                      icon: Icons.light_mode_rounded,
-                      isSelected: prefs.themeMode == ThemeMode.light,
-                      onTap: () => notifier.setThemeMode(ThemeMode.light),
-                    ),
-                    const SizedBox(width: AppConstants.space2),
-                    _ThemeSelectorCard(
-                      label: 'Dark',
-                      icon: Icons.dark_mode_rounded,
-                      isSelected: prefs.themeMode == ThemeMode.dark,
-                      onTap: () => notifier.setThemeMode(ThemeMode.dark),
-                    ),
-                    const SizedBox(width: AppConstants.space2),
-                    _ThemeSelectorCard(
-                      label: 'System',
-                      icon: Icons.brightness_auto_rounded,
-                      isSelected: prefs.themeMode == ThemeMode.system,
-                      onTap: () => notifier.setThemeMode(ThemeMode.system),
-                    ),
-                  ],
-                ),
-              ],
+            title: const Text('Dark Mode'),
+            subtitle: Text(
+              prefs.themeMode == ThemeMode.dark ? 'Dark theme active' : 'Light theme active',
             ),
+            value: prefs.themeMode == ThemeMode.dark,
+            onChanged: (isDark) {
+              HapticFeedback.selectionClick();
+              notifier.setThemeMode(isDark ? ThemeMode.dark : ThemeMode.light);
+            },
           ),
+
 
           const SizedBox(height: AppConstants.space3),
 
           // Accent Color Swatches
+          // Accent Color Selector (1 Line, Label-Free Swatches)
           Padding(
             padding: const EdgeInsets.symmetric(
               horizontal: AppConstants.space4,
@@ -92,67 +71,52 @@ class SettingsScreen extends ConsumerWidget {
                   ),
                 ),
                 const SizedBox(height: AppConstants.space3),
-                Wrap(
-                  spacing: AppConstants.space3,
-                  runSpacing: AppConstants.space3,
-                  children: AccentTheme.values.map((accent) {
+                Row(
+                  mainAxisAlignment: MainAxisAlignment.spaceEvenly,
+                  children: [
+                    AccentTheme.pink,
+                    AccentTheme.skyBlue,
+                    AccentTheme.yellow,
+                    AccentTheme.orange,
+                    AccentTheme.monochrome,
+                  ].map((accent) {
                     final isSelected = prefs.accentTheme == accent;
-                    return InkWell(
-                      onTap: () => notifier.setAccentTheme(accent),
-                      borderRadius: BorderRadius.circular(16),
+
+                    return GestureDetector(
+                      onTap: () {
+                        HapticFeedback.selectionClick();
+                        notifier.setAccentTheme(accent);
+                      },
                       child: AnimatedContainer(
-                        duration: 200.ms,
-                        padding: const EdgeInsets.symmetric(
-                          horizontal: AppConstants.space3,
-                          vertical: AppConstants.space2,
-                        ),
+                        duration: const Duration(milliseconds: 200),
+                        width: 42,
+                        height: 42,
                         decoration: BoxDecoration(
-                          color: isSelected
-                              ? accent.swatch.withValues(alpha: 0.15)
-                              : theme.colorScheme.surfaceContainerHighest.withValues(alpha: 0.4),
-                          borderRadius: BorderRadius.circular(16),
+                          shape: BoxShape.circle,
+                          color: accent.swatch,
                           border: Border.all(
-                            color: isSelected ? accent.swatch : Colors.transparent,
-                            width: 2,
+                            color: isSelected
+                                ? (theme.brightness == Brightness.dark ? Colors.white : Colors.black87)
+                                : Colors.transparent,
+                            width: isSelected ? 3.0 : 0.0,
                           ),
-                        ),
-                        child: Row(
-                          mainAxisSize: MainAxisSize.min,
-                          children: [
-                            Container(
-                              width: 22,
-                              height: 22,
-                              decoration: BoxDecoration(
-                                shape: BoxShape.circle,
-                                color: accent.swatch,
-                                boxShadow: [
-                                  BoxShadow(
-                                    color: accent.swatch.withValues(alpha: 0.4),
-                                    blurRadius: 6,
-                                    offset: const Offset(0, 2),
-                                  ),
-                                ],
-                              ),
-                              child: isSelected
-                                  ? const Icon(
-                                      Icons.check_rounded,
-                                      size: 14,
-                                      color: Colors.white,
-                                    )
-                                  : null,
-                            ),
-                            const SizedBox(width: AppConstants.space2),
-                            Text(
-                              accent.displayName,
-                              style: theme.textTheme.labelMedium?.copyWith(
-                                fontWeight: isSelected ? FontWeight.w700 : FontWeight.w500,
-                                color: isSelected
-                                    ? accent.swatch
-                                    : theme.colorScheme.onSurface,
-                              ),
+                          boxShadow: [
+                            BoxShadow(
+                              color: accent.swatch.withValues(alpha: isSelected ? 0.5 : 0.25),
+                              blurRadius: isSelected ? 10 : 4,
+                              offset: const Offset(0, 2),
                             ),
                           ],
                         ),
+                        child: isSelected
+                            ? Icon(
+                                Icons.check_rounded,
+                                size: 22,
+                                color: ThemeData.estimateBrightnessForColor(accent.swatch) == Brightness.dark
+                                    ? Colors.white
+                                    : Colors.black87,
+                              )
+                            : null,
                       ),
                     );
                   }).toList(),
@@ -161,104 +125,18 @@ class SettingsScreen extends ConsumerWidget {
             ),
           ),
 
-          const SizedBox(height: AppConstants.space3),
+          const SizedBox(height: AppConstants.space4),
 
-          // Font Style Selector (PRD Requirement 9)
-          Padding(
-            padding: const EdgeInsets.symmetric(
-              horizontal: AppConstants.space4,
-              vertical: AppConstants.space2,
-            ),
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Text(
-                  'Font Style',
-                  style: theme.textTheme.titleSmall?.copyWith(
-                    fontWeight: FontWeight.w600,
-                  ),
-                ),
-                const SizedBox(height: AppConstants.space1),
-                Text(
-                  'Choose your preferred typography personality',
-                  style: theme.textTheme.bodySmall?.copyWith(
-                    color: theme.colorScheme.onSurfaceVariant,
-                  ),
-                ),
-                const SizedBox(height: AppConstants.space3),
-                SingleChildScrollView(
-                  scrollDirection: Axis.horizontal,
-                  physics: const BouncingScrollPhysics(),
-                  child: Row(
-                    children: AppFontStyle.values.map((font) {
-                      final isSelected = prefs.fontStyle == font;
-                      return Padding(
-                        padding: const EdgeInsets.only(right: AppConstants.space2),
-                        child: InkWell(
-                          onTap: () => notifier.setFontStyle(font),
-                          borderRadius: BorderRadius.circular(AppConstants.radiusMD),
-                          child: AnimatedContainer(
-                            duration: 200.ms,
-                            width: 165,
-                            padding: const EdgeInsets.all(AppConstants.space3),
-                            decoration: BoxDecoration(
-                              color: isSelected
-                                  ? theme.colorScheme.primaryContainer
-                                  : theme.colorScheme.surfaceContainerHighest.withValues(alpha: 0.4),
-                              borderRadius: BorderRadius.circular(AppConstants.radiusMD),
-                              border: Border.all(
-                                color: isSelected
-                                    ? theme.colorScheme.primary
-                                    : Colors.transparent,
-                                width: 2,
-                              ),
-                            ),
-                            child: Column(
-                              crossAxisAlignment: CrossAxisAlignment.start,
-                              children: [
-                                Row(
-                                  mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                                  children: [
-                                    Text(
-                                      font.displayName,
-                                      style: theme.textTheme.titleSmall?.copyWith(
-                                        fontWeight: FontWeight.w700,
-                                        color: isSelected
-                                            ? theme.colorScheme.primary
-                                            : theme.colorScheme.onSurface,
-                                      ),
-                                    ),
-                                    if (isSelected)
-                                      Icon(
-                                        Icons.check_circle_rounded,
-                                        size: 16,
-                                        color: theme.colorScheme.primary,
-                                      ),
-                                  ],
-                                ),
-                                const SizedBox(height: AppConstants.space1),
-                                Text(
-                                  font.description,
-                                  maxLines: 2,
-                                  overflow: TextOverflow.ellipsis,
-                                  style: theme.textTheme.labelSmall?.copyWith(
-                                    fontSize: 10,
-                                    color: isSelected
-                                        ? theme.colorScheme.primary
-                                        : theme.colorScheme.onSurfaceVariant,
-                                  ),
-                                ),
-                              ],
-                            ),
-                          ),
-                        ),
-                      );
-                    }).toList(),
-                  ),
-                ),
-              ],
-            ),
+          // Font Style Setting Tile
+          ListTile(
+            leading: const Icon(Icons.font_download_rounded),
+            title: const Text('Font Style'),
+            subtitle: Text(prefs.fontStyle.description),
+            onTap: () => _showFontStylePicker(context, prefs.fontStyle, notifier),
+            trailing: const Icon(Icons.chevron_right_rounded, size: 20),
           ),
+
+
 
           const SizedBox(height: AppConstants.space2),
 
@@ -406,7 +284,162 @@ class SettingsScreen extends ConsumerWidget {
     );
   }
 
+  void _showFontStylePicker(
+    BuildContext context,
+    AppFontStyle current,
+    PreferencesNotifier notifier,
+  ) {
+    showModalBottomSheet<void>(
+      context: context,
+      isScrollControlled: true,
+      backgroundColor: Colors.transparent,
+      builder: (ctx) {
+        final theme = Theme.of(ctx);
+        final colorScheme = theme.colorScheme;
+
+        return Container(
+          decoration: BoxDecoration(
+            color: colorScheme.surfaceContainerHigh,
+            borderRadius: const BorderRadius.vertical(top: Radius.circular(28)),
+            border: Border.all(
+              color: colorScheme.outlineVariant.withValues(alpha: 0.3),
+            ),
+          ),
+          padding: EdgeInsets.fromLTRB(
+            AppConstants.space4,
+            AppConstants.space3,
+            AppConstants.space4,
+            MediaQuery.of(ctx).padding.bottom + AppConstants.space4,
+          ),
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Center(
+                child: Container(
+                  width: 36,
+                  height: 4,
+                  decoration: BoxDecoration(
+                    color: colorScheme.onSurfaceVariant.withValues(alpha: 0.3),
+                    borderRadius: BorderRadius.circular(2),
+                  ),
+                ),
+              ),
+              const SizedBox(height: AppConstants.space4),
+              Row(
+                children: [
+                  Container(
+                    padding: const EdgeInsets.all(10),
+                    decoration: BoxDecoration(
+                      color: colorScheme.primary.withValues(alpha: 0.12),
+                      shape: BoxShape.circle,
+                    ),
+                    child: Icon(
+                      Icons.font_download_rounded,
+                      color: colorScheme.primary,
+                      size: 22,
+                    ),
+                  ),
+                  const SizedBox(width: AppConstants.space3),
+                  Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Text(
+                        'Font Style',
+                        style: theme.textTheme.titleMedium?.copyWith(
+                          fontWeight: FontWeight.w700,
+                        ),
+                      ),
+                      Text(
+                        'Choose your typography personality',
+                        style: theme.textTheme.bodySmall?.copyWith(
+                          color: colorScheme.onSurfaceVariant,
+                        ),
+                      ),
+                    ],
+                  ),
+                ],
+              ),
+              const SizedBox(height: AppConstants.space4),
+              ConstrainedBox(
+                constraints: BoxConstraints(
+                  maxHeight: MediaQuery.of(ctx).size.height * 0.55,
+                ),
+                child: ListView.separated(
+                  shrinkWrap: true,
+                  physics: const BouncingScrollPhysics(),
+                  itemCount: AppFontStyle.values.length,
+                  separatorBuilder: (_, __) => const SizedBox(height: 8),
+                  itemBuilder: (ctx, index) {
+                    final font = AppFontStyle.values[index];
+                    final isSelected = current == font;
+
+                    return InkWell(
+                      onTap: () {
+                        HapticFeedback.selectionClick();
+                        notifier.setFontStyle(font);
+                        Navigator.pop(ctx);
+                      },
+                      borderRadius: BorderRadius.circular(16),
+                      child: AnimatedContainer(
+                        duration: const Duration(milliseconds: 200),
+                        padding: const EdgeInsets.all(AppConstants.space3),
+                        decoration: BoxDecoration(
+                          color: isSelected
+                              ? colorScheme.primary.withValues(alpha: 0.12)
+                              : colorScheme.surfaceContainer.withValues(alpha: 0.5),
+                          borderRadius: BorderRadius.circular(16),
+                          border: Border.all(
+                            color: isSelected ? colorScheme.primary : Colors.transparent,
+                            width: 2,
+                          ),
+                        ),
+                        child: Row(
+                          children: [
+                            Expanded(
+                              child: Column(
+                                crossAxisAlignment: CrossAxisAlignment.start,
+                                children: [
+                                  Text(
+                                    font.displayName,
+                                    style: theme.textTheme.titleSmall?.copyWith(
+                                      fontWeight: isSelected ? FontWeight.w700 : FontWeight.w600,
+                                      color: isSelected ? colorScheme.primary : colorScheme.onSurface,
+                                    ),
+                                  ),
+                                  const SizedBox(height: 2),
+                                  Text(
+                                    font.description,
+                                    style: theme.textTheme.bodySmall?.copyWith(
+                                      color: isSelected ? colorScheme.primary : colorScheme.onSurfaceVariant,
+                                      fontSize: 12,
+                                    ),
+                                  ),
+                                ],
+                              ),
+                            ),
+                            if (isSelected)
+                              Icon(
+                                Icons.check_circle_rounded,
+                                color: colorScheme.primary,
+                                size: 22,
+                              ),
+                          ],
+                        ),
+                      ),
+                    );
+                  },
+                ),
+              ),
+            ],
+          ),
+        );
+      },
+    );
+  }
+
   String _landingPageLabel(int index) => switch (index) {
+
         0 => 'Inbox',
         1 => 'Today (Default)',
         2 => 'Projects',
